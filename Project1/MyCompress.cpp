@@ -1,6 +1,6 @@
 #include <iostream>
 #include <fstream>
-#include<string>
+
 
 using namespace std;
 
@@ -11,11 +11,7 @@ void compress (ifstream &in, ofstream &out){
     bool isZero = false;
     int count = 0;
     while (getline (in, line)) {
-        // Output the text from the file
-        // cout << line << "\n";
-        // cout << line.size() << "\n";
-        //go through each character of the string
-        for(int i = 0; i < line.size() - 1; i++){
+        for(int i = 0; i < line.size(); i++){
             // cout << "in";
             if(line[i] == '1' && line[i + 1] == '1'){
                 count++;
@@ -43,6 +39,7 @@ void compress (ifstream &in, ofstream &out){
                 temp = "";
             }
         }
+        returnString += "\n";
     }
     out << returnString;
     
