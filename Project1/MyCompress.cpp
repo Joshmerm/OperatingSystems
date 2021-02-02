@@ -48,7 +48,6 @@ int main(int argc, char** argv) {
         out.close();
     }else{
         perror("Error");
-        // cout << "Error, Couldnt open\n";
         exit(1);
     }
   

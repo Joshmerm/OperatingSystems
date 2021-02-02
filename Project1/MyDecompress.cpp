@@ -1,6 +1,5 @@
 #include <iostream>
 #include <fstream>
-#include <sstream> 
 #include <string> 
 
 using namespace std;
@@ -16,6 +15,7 @@ void decompress (ifstream &in, ofstream &out){
             if(line[i] == '+' || line[i] == '-'){
                 bool isZero = line[i++] == '-';
                 count = "";
+
                 while(line[i] != '+' && line[i] != '-') count += line[i++];
                 
                 for(int i = 0; i < stoi(count); i++) temp += isZero ? '0' : '1';
@@ -23,11 +23,10 @@ void decompress (ifstream &in, ofstream &out){
                 returnString += temp;
                 temp = ""; 
 
-            }else{
-                returnString += line[i];
             }
+            else returnString += line[i];
         }
-        returnString += "\n";
+        returnString += '\n';
     }
     out << returnString;
     
