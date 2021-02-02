@@ -1,4 +1,0 @@
-#!/bin/bash
-#Compiles and runs
-g++ -o MyCompress MyCompress.cpp && ./MyCompress source.txt MyCompress.txt
-g++ -o MyDecompress MyDecompress.cpp && ./MyDecompress MyCompress.txt MyDecompress.txt
