@@ -6,40 +6,29 @@ using namespace std;
 
 void compress (ifstream &in, ofstream &out){
     string line;
-    string temp;
+    string temp = "";
     string returnString;
-    bool isZero = false;
     int count = 0;
     while (getline (in, line)) {
         for(int i = 0; i < line.size(); i++){
-            // cout << "in";
-            if(line[i] == '1' && line[i + 1] == '1'){
+            if((line[i] - line[i + 1]) == 0){
                 count++;
-                isZero = false;
                 temp += line[i];
-            }else if(line[i] == '0' && line[i + 1] == '0'){
-                count++;
-                isZero = true;
-                temp += line[i];
-                // cout << "in";
             }else{
                 if(count++ >= 15){
-                    // cout << "in";
-                    if(!isZero){
-                        temp = "+" + to_string(count) + "+";
-                    }else{
-                        temp = "-" + to_string(count) + "-";
-                    }
-
-                }else{
+                    if(line[i] == '1') temp = "+" + to_string(count) + "+";
+                    else temp = "-" + to_string(count) + "-";
+                } 
+                else{
                     temp += line[i];
-                }
-                count = 0;
+                } 
+                
                 returnString += temp;
+                count = 0;
                 temp = "";
             }
         }
-        returnString += "\n";
+        returnString += '\n';
     }
     out << returnString;
     
@@ -48,6 +37,7 @@ void compress (ifstream &in, ofstream &out){
 int main(int argc, char** argv) { 
     ifstream in;
     ofstream out;
+    // ofstream out;
     in.open(argv[1]);
     out.open(argv[2]);
 
@@ -57,7 +47,8 @@ int main(int argc, char** argv) {
         in.close();
         out.close();
     }else{
-        cout << "Error, Couldnt open\n";
+        perror("Error");
+        // cout << "Error, Couldnt open\n";
         exit(1);
     }
   

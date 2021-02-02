@@ -1,32 +1,25 @@
 #include <iostream>
 #include <fstream>
 #include <sstream> 
+#include <string> 
 
 using namespace std;
 
-void compress (ifstream &in, ofstream &out){
+void decompress (ifstream &in, ofstream &out){
     string line;
     string temp;
     string returnString;
+    string count;
     
     while (getline (in, line)) {
         for(int i = 0; i < line.size(); i++){
-            // cout << "in";
             if(line[i] == '+' || line[i] == '-'){
-                bool isZero = line[i] == '-';
-                i++;
-                while(line[i] != '+' && line[i] != '-'){
-                   temp += line[i++];
-                }
+                bool isZero = line[i++] == '-';
+                count = "";
+                while(line[i] != '+' && line[i] != '-') count += line[i++];
+                
+                for(int i = 0; i < stoi(count); i++) temp += isZero ? '0' : '1';
 
-                stringstream geek(temp);
-                temp = ""; 
-                int n = 0;
-                geek >> n;
-                // cout << geek <s<  endl;
-                for(int i = 0; i < n; i++){
-                    temp += isZero ? '0' : '1';
-                }
                 returnString += temp;
                 temp = ""; 
 
@@ -48,11 +41,11 @@ int main(int argc, char** argv) {
 
     if(in.is_open() && out.is_open()){
         //Then do compression
-        compress(in, out);
+        decompress(in, out);
         in.close();
         out.close();
     }else{
-        cout << "Error, Couldnt open\n";
+        perror("Error");
         exit(1);
     }
   
