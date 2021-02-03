@@ -4,6 +4,28 @@
 
 using namespace std;
 
+void compress (ifstream &in, ofstream &out);
+
+int main(int argc, char** argv) { 
+    ifstream in;
+    ofstream out;
+    // ofstream out;
+    in.open(argv[1]);
+    out.open(argv[2]);
+
+    if(in.is_open() && out.is_open()){
+        //Then do compression
+        compress(in, out);
+        in.close();
+        out.close();
+    }else{
+        perror("Error");
+        exit(1);
+    }
+  
+    return 0; 
+} 
+
 void compress (ifstream &in, ofstream &out){
     string line;
     string temp = "";
@@ -33,23 +55,3 @@ void compress (ifstream &in, ofstream &out){
     out << returnString;
     
 }
-
-int main(int argc, char** argv) { 
-    ifstream in;
-    ofstream out;
-    // ofstream out;
-    in.open(argv[1]);
-    out.open(argv[2]);
-
-    if(in.is_open() && out.is_open()){
-        //Then do compression
-        compress(in, out);
-        in.close();
-        out.close();
-    }else{
-        perror("Error");
-        exit(1);
-    }
-  
-    return 0; 
-} 

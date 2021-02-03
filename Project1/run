@@ -1,4 +1,4 @@
 #!/bin/bash
 #Compiles and runs
-g++ -o MyCompress MyCompress.cpp && ./MyCompress source.txt MyCompress.txt
-g++ -o MyDecompress MyDecompress.cpp && ./MyDecompress MyCompress.txt MyDecompress.txt
+g++ -o MyCompress MyCompress.cpp && g++ -o MyDecompress MyDecompress.cpp
+g++ -o ForkCompress ForkCompress.cpp && ./ForkCompress MyCompress source.txt MyDecompress.txt
