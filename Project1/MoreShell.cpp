@@ -1,12 +1,11 @@
 
-#include <stdlib.h>
 #include <sys/wait.h>
 #include <stdio.h>
-// #include <fcntl.h>
 #include <unistd.h>
 #include <iostream>
 #include <string.h>
 #include <vector>
+ #include <sstream>
 using namespace std;
 
 int main(int argc, char** argv){
@@ -16,22 +15,20 @@ int main(int argc, char** argv){
 
   while(command.compare("exit") != 0){
     cout<<"MoreShell>";
-    command = "";
     getline(cin, command); 
-    vector<string> list;
-    char * listFinal[50];
 
-    for(auto x : command){
-        if(isspace(x)) {
-            list.push_back(temp);
-            temp = "";
-        }
-        else temp += x;
-    }
-    list.push_back(temp);
+    stringstream cmdss = (stringstream) command;
+    vector<string> list = {};
+
+    while (getline(cmdss,temp,' '))
+        list.push_back(temp);
+
+    char * listFinal[list.size() + 1];
 
     for(int i = 0; i < list.size(); i++)
         listFinal[i] = (char*) list[i].c_str();
+    
+    listFinal[list.size()] = NULL;
 
     pid = fork();
     if(pid < 0 )
