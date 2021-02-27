@@ -78,15 +78,16 @@ int main(int argc, char** argv){
           perror("pipe");    
           exit(EXIT_FAILURE); 
         }else if(pid2 == 0){
-          exit(1);
-        }else{
           if(list2.size() > 0){
             dup2(pipefds[0],STDIN_FILENO); 
             close(pipefds[1]);
-            close(pipefds[0]);
             execvp(listFinal2[0], listFinal2);
             exit(EXIT_SUCCESS);  
           }
+        }else{
+          close(pipefds[1]);
+          close(pipefds[0]);
+          wait(&pid2);
         }
 
   
