@@ -8,24 +8,32 @@
 using namespace std;
 
 int main(int argc, char** argv){
-  pid_t pid;
-  int pipefds[2];
   string command;
   string temp;
 
   while(command.compare("exit") != 0){
-    cout<<"MoreShell>";
-    getline(cin, command); 
+    pid_t pid, pid2;
+    int pipefds[2];
+    cout<<"DupShell>";
+    getline(cin, command);
+    stringstream cmd1;
+    stringstream cmd2;
 
-    stringstream cmd1 = (stringstream) command.substr(0, command.find("|"));
-    stringstream cmd2 = (stringstream) command.substr(command.find("|") + 2, command.length() - 1);
+    if (command.find('|') != std::string::npos){
+      cmd1 = (stringstream) command.substr(0, command.find("|"));
+      cmd2 = (stringstream) command.substr(command.find("|") + 2, command.length());
+    }else{
+      cmd1 = (stringstream) command;
+    }
+
     vector<string> list1 = {};
     vector<string> list2 = {};
+
 
     while (getline(cmd1,temp,' '))
         list1.push_back(temp);
 
-    while (getline(cmd2,temp,' '))
+    while (getline(cmd2,temp,' ') && cmd2.str().size() > 0)
         list2.push_back(temp);
 
     char * listFinal1[list1.size() + 1];
@@ -38,35 +46,56 @@ int main(int argc, char** argv){
         listFinal2[i] = (char*) list2[i].c_str();
     
     listFinal1[list1.size()] = NULL;
-    listFinal2[list2.size()] = NULL;
 
-
+    if(list2.size() > 0)
+      listFinal2[list2.size()] = NULL;
+  
     if(pipe(pipefds) == -1){    
       perror("pipe");    
-      // exit(EXIT_FAILURE);  
-    }
+      exit(EXIT_FAILURE);  
+    }else{
+      pid = fork();
+      if(pid == -1 ){
+        perror("Fork");
+        exit(EXIT_FAILURE);
+      } else if(pid == 0){
+        if(list2.size() > 0){
+          dup2(pipefds[1], STDOUT_FILENO);
+          close(pipefds[0]);    
+          execvp(listFinal1[0], listFinal1);
+          exit(EXIT_SUCCESS);
+        }else{
+          execvp(listFinal1[0], listFinal1);
+        }
+     
+      
+      }else{
+        wait(&pid);
 
-    pid = fork();
-    if(pid == -1 ){
-      perror("Fork");
-      exit(EXIT_FAILURE);
-    } else if(pid == 0){
-      dup2(pipefds[1], STDOUT_FILENO);
-      close(pipefds[0]);      
-      execvp(listFinal1[0], listFinal1);
-      // exit(EXIT_SUCCESS);
-    }
-    else{
-      dup2(pipefds[0],STDIN_FILENO); 
-      close(pipefds[1]);
-      // wait(&pid);
-      execvp(listFinal2[0], listFinal2);
-      // exit(EXIT_SUCCESS);   
-        
-    }
+        pid2 = fork();
 
+        if(pid2 == -1 ){
+          perror("pipe");    
+          exit(EXIT_FAILURE); 
+        }else if(pid2 == 0){
+          exit(1);
+        }else{
+          if(list2.size() > 0){
+            dup2(pipefds[0],STDIN_FILENO); 
+            close(pipefds[1]);
+            close(pipefds[0]);
+            execvp(listFinal2[0], listFinal2);
+            exit(EXIT_SUCCESS);  
+          }
+        }
+
+  
+    }
     fflush(stdout);
-        
   }
+
+    }
+
+    
   exit(0);
 }
