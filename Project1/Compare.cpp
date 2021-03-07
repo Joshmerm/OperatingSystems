@@ -26,7 +26,7 @@ int main(int argc, char* argv[]) {
         std::cout<< "Error, no child process create" << std::endl;
     }
     else if (pid1 == 0) {
-        execl(concatItself.c_str(),argv[1],argv[3],argv[4],NULL);    
+        execl(concatItself.c_str(),argv[1],argv[2],argv[3],NULL);    
     }
     else {
         auto start = std::chrono::system_clock::now();
@@ -53,14 +53,15 @@ int main(int argc, char* argv[]) {
     // }
 
 
-    std::ofstream output(argv[4]);
+    //std::ofstream output(argv[4]);
 
-    output<< "It took: " << between.count() << "s to finish." << std::endl;
+    std::cout << "It took: " << between.count() << "s to finish." << std::endl;
+    //output<< "It took: " << between.count() << "s to finish." << std::endl;
     // output<< "It took: " << between.count() << "s to finish ParFork." << std::endl;
     // output<< "It took: " << between2.count() << "s to finish ParThread." << std::endl;
 
 
-    output.close();
+    //output.close();
 
 
 
