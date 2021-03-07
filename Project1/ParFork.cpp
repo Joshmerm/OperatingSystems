@@ -18,8 +18,7 @@ int main(int argc, char **argv)
     vector <string> results;
     ifstream infile(argv[1]);
     if (infile.is_open()){
-        while (!infile.eof()){
-            getline(infile, input);
+        while (getline(infile, input)){
             results.push_back(input);
         }
     }
@@ -33,17 +32,21 @@ int main(int argc, char **argv)
     ofs.open(argv[2], ofstream::out | ofstream::trunc);
     ofs.close();
 
-    int size = results.size() / N > 0 ? results.size() / N : (results.size() % N);
+    int size = results.size() / N;
+    int remainder = results.size() % N;
     int start = 0;
     int end = size;
 
     for (int i = 0; i < N; i++){
 
         input = "";
+        if(i == N - 1){
+            end += remainder;
+        }
+
         for(int j = start; j < end; j++)
             input += j < results.size() ? results[j] + '\n' : "";
 
-        cout << input << " start: " << start << endl;
         start = end;
         end += size;
 

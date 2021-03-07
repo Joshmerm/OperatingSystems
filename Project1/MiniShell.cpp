@@ -14,13 +14,16 @@ int main(int argc, char** argv){
   pid_t pid;
   string command;
   while(command.compare("exit") != 0){
+
     cout<<"MiniShell>";
     cin >> command;
     pid = fork();
+
     if(pid < 0 )perror("Failed to create the pipe");
     else if(pid == 0)
         execlp(command.c_str(), command.c_str(), NULL);
     else wait(&pid);
+    
     fflush(stdout);
   }
   exit(0);

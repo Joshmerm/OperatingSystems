@@ -1,5 +1,3 @@
-#include <pthread.h>
-#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -8,76 +6,101 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <vector>
+#include <cstring>
 
 using namespace std;
 
-void compile(string, string);
+// void *compress(void*, void*);
 
-int N = 10;
+int N = 3;
+
+void *compress(void *);
+
+struct arg_struct
+{
+    char *input;
+    char *out;
+};
 
 int main(int argc, char **argv)
 {
+
+    pthread_t tid[N];
     string input = "";
-    vector <string> results;
+    vector<string> results;
     ifstream infile(argv[1]);
-    if (infile.is_open()){
-        while (!infile.eof()){
-            getline(infile, input);
+    if (infile.is_open())
+    {
+        while (getline(infile, input))
+        {
             results.push_back(input);
         }
     }
     else
         cout << "Opening File Error" << endl;
+    
+    infile.close();
 
-    pid_t pids[N];
+    
 
-    // clear file
-    ofstream ofs;
-    ofs.open(argv[2], ofstream::out | ofstream::trunc);
-    ofs.close();
 
-    int size = results.size() / N > 0 ? results.size() / N : (results.size() % N);
+    int size = results.size() / N;
+    int remainder = results.size() % N;
     int start = 0;
     int end = size;
 
-    for (int i = 0; i < N; i++){
-
+    for (int i = 0; i < N; i++)
+    {
+        int rc;
         input = "";
-        for(int j = start; j < end; j++)
-            input += j < results.size() ? results[j] + '\n' : "";
 
-        cout << input << " start: " << start << endl;
+        if (i == N - 1)
+        {
+            end += remainder;
+        }
+
+        for (int j = start; j < end; j++)
+            input += results[j] + '\n';
+
         start = end;
         end += size;
-
-
-        pids[i] = fork();
-
-        if (pids[i] == 0)
-            compile(input, argv[2]);
-        else if(pids[i] > 0){
-            wait(&pids[i]);
+        struct arg_struct arg;
+        char *in = (char *) input.c_str();
+        arg.input = in;
+        arg.out = argv[2];
+        cout <<arg.input << endl;
+        if(arg.input != "" && arg.input != "\n"){
+        rc = pthread_create(&tid[i], NULL, compress, &arg);
+        if (rc)
+        {
+            cout << "Error return code from pthread_create(t1) is" << rc << endl;
+            exit(-1);
+        }
         }
     }
-    int status;
-    pid_t pid;
-    int n = N;
-    while (n > 0)
-    {
-        pid = wait(&status);
-        n--;
-    }
-    infile.close();
 
+    for (int i = 0; i < N + 1; i++)
+        pthread_join(tid[i], NULL);
+
+    
+    // int* status = (int*)malloc(sizeof(int));
     return 0;
 }
 
-void compile(string input, string out)
+void *compress(void *arguments)
 {
+    struct arg_struct *args = (struct arg_struct *)arguments;
+
+    char *out = (char *)args->out;
+    cout << "out" << out << endl;
+
+    char *input = (char *)args->input;
+    cout << (args->input) << endl;
+
     ofstream output(out, ios::app);
     int counter2 = 0;
     int counter = 1;
-    for (int i = 0; i < input.size(); i++)
+    for (int i = 0; i < sizeof(input); i++)
     {
         if (input[i + 1] - input[i] == 0)
         {
@@ -97,16 +120,19 @@ void compile(string input, string out)
             {
                 if (input[counter2 - 1] == '1')
                 {
-                    output << "+" << counter << "+";
+                    string temp = "+" + to_string(counter) + "+";
+                    output << temp;
                 }
                 else
                 {
-                    output << "-" << counter << "-";
+                    string temp = "-" + to_string(counter) + "-";
+                    output << temp;
                 }
             }
             counter = 1;
         }
     }
     output.close();
-    exit(0);
+    pthread_exit(NULL);
+    // return nullptr;
 }
