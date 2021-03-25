@@ -12,9 +12,9 @@ using namespace std;
 
 // void *compress(void*, void*);
 
-int N = 3;
-
 void *compress(void *);
+
+int N = 3;
 
 struct arg_struct
 {
@@ -68,12 +68,11 @@ int main(int argc, char **argv)
         char *in = (char *) input.c_str();
         arg.input = in;
         arg.out = argv[2];
-        cout <<arg.input << endl;
+
         if(arg.input != "" && arg.input != "\n"){
-        rc = pthread_create(&tid[i], NULL, compress, &arg);
+            rc = pthread_create(&tid[i], NULL, compress, &arg);
         if (rc)
         {
-            cout << "Error return code from pthread_create(t1) is" << rc << endl;
             exit(-1);
         }
         }
@@ -82,8 +81,6 @@ int main(int argc, char **argv)
     for (int i = 0; i < N + 1; i++)
         pthread_join(tid[i], NULL);
 
-    
-    // int* status = (int*)malloc(sizeof(int));
     return 0;
 }
 
