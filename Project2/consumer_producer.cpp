@@ -14,19 +14,13 @@ using namespace std;
 #define BUFFER_FULL false
 #define BUFFER_EMPTY true
 #define MAX_SIZE 5
+
 pthread_mutex_t bufLock;
 
 sem_t empty, full;
 
 int count;
 
-// int Buffer_Index_Value = 0;
-
-// char *Buffer_Queue;
-
-// pthread_mutex_t mutex_variable = PTHREAD_MUTEX_INITIALIZER;
-// pthread_cond_t Buffer_Queue_Not_Full = PTHREAD_COND_INITIALIZER;
-// pthread_cond_t Buffer_Queue_Not_Empty = PTHREAD_COND_INITIALIZER;
 
 void consumer(char* buf){
     while(true){
@@ -63,7 +57,8 @@ int main(){
    pthread_t p;   
    count = 0;   
    pthread_mutex_init(&bufLock, NULL);   
-   pthread_create(&p, NULL, &producer, &buffer);   
+   pthread_create(&p, NULL, &producer, &buffer); 
+   pthread_join(p, NULL);  
    consumer(buffer);   
    return 0;
 }
