@@ -1,29 +1,11 @@
 #include <iostream>
-#include <sys/types.h>
 #include <unistd.h>
-#include <sys/wait.h>
-#include <fstream>
-#include <vector>
-#include <sstream>
 #include <pthread.h>
 #include <semaphore.h>
 #include <string>
 #include <stdlib.h> 
 
-
 using namespace std;
-
-#define Buffer_Limit 10
-#define BUFFER_FULL false
-#define BUFFER_EMPTY true
-#define MAX_SIZE 5
-
-vector<int> waitingPassengers;
-vector<int> waitingForHandlers;
-vector<int> waitingForScreening;
-vector<int> waitingToBeOnPlane;
-
-pthread_mutex_t bufLock;
 
 sem_t handlerLock, handlerLockRelease, screenerLock, screenerLockRelease, attendentLock, attendentLockRelease;
 
@@ -62,19 +44,19 @@ void* passenger(void* arg){
 }
 
 void* handler(void* b){
-    while(passengersProcessedHandlers++ < numberOfPassengers){
+    while(passengersProcessedHandlers < numberOfPassengers){
         sem_wait(&handlerLock);
+        passengersProcessedHandlers++;
         sem_post(&handlerLockRelease);
-        // if(++passengersProcessedHandlers == numberOfPassengers) break;
     }
     pthread_exit(0);
 }
 
 void* screener(void* b){
-    while(passengersProcessedSecurity++ < numberOfPassengers){
+    while(passengersProcessedSecurity < numberOfPassengers){
         sem_wait(&screenerLock);
+        passengersProcessedSecurity++;
         sem_post(&screenerLockRelease);
-        // if(++passengersProcessedSecurity == numberOfPassengers) break;
     }
     pthread_exit(0);
 
@@ -82,19 +64,15 @@ void* screener(void* b){
 }
 
 void* attendent(void* b){
-    while(passengersProcessedAttendents++ < numberOfPassengers){
+    while(passengersProcessedAttendents < numberOfPassengers){
         sem_wait(&attendentLock);
+        passengersProcessedAttendents++;
         sem_post(&attendentLockRelease);
-        // if(++passengersProcessedAttendents == numberOfPassengers) break;
     }
     pthread_exit(0);
 
 
 }
-
-
-
-
 
 int main(int argc, char *argv[]){
     // int p = atoi(argv[1]), b = atoi(argv[2]), s = atoi(argv[3]), f = atoi(argv[4]);
@@ -114,9 +92,6 @@ int main(int argc, char *argv[]){
     sem_init(&screenerLockRelease, 1, atoi(argv[3]));
     sem_init(&attendentLock, 1, 0);
     sem_init(&attendentLockRelease, 1, atoi(argv[4]));
-
-    for(int i = 1; i <= atoi(argv[1]); i++)
-        waitingPassengers.push_back(i);
 
     for(int i = 0; i < atoi(argv[2]); i++)
         pthread_create(&baggage[i], NULL, &handler, NULL);
@@ -146,7 +121,6 @@ int main(int argc, char *argv[]){
     for(int i = 0; i < atoi(argv[1]); i++)
         pthread_join(passengers[i], NULL);
 
-    // pthread_join(p2, NULL);
 
 
     sem_destroy(&handlerLock);
@@ -157,5 +131,5 @@ int main(int argc, char *argv[]){
     sem_destroy(&attendentLockRelease);
 
 
-   return 0;
+    return 0;
 }
