@@ -108,11 +108,11 @@ int main(int argc, char *argv[]){
 
     numberOfPassengers = atoi(argv[1]);
 
-    sem_init(&handlerLock, 1, atoi(argv[2]));
+    sem_init(&handlerLock, 1, 0);
     sem_init(&handlerLockRelease, 1, atoi(argv[2]));
-    sem_init(&screenerLock, 1, atoi(argv[3]));
+    sem_init(&screenerLock, 1, 0);
     sem_init(&screenerLockRelease, 1, atoi(argv[3]));
-    sem_init(&attendentLock, 1, atoi(argv[4]));
+    sem_init(&attendentLock, 1, 0);
     sem_init(&attendentLockRelease, 1, atoi(argv[4]));
 
     for(int i = 1; i <= atoi(argv[1]); i++)
