@@ -6,6 +6,7 @@
 #include <stdlib.h> 
 
 using namespace std;
+//Update
 
 sem_t handlerLock, handlerLockRelease, screenerLock, screenerLockRelease, attendentLock, attendentLockRelease;
 
