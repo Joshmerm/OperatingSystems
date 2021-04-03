@@ -107,7 +107,10 @@ void *mother(void *arg)
 int main(int argc, char *argv[])
 {
     N = atoi(argv[1]);
-
+    if(N <= 0){
+        perror("Bust Be Greater Than 0 and an Int");
+        exit(EXIT_FAILURE);
+    }
     pthread_t p, p2;
 
     sem_init(&motherLock, 1, 1);
