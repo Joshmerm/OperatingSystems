@@ -1,54 +1,29 @@
 // Server side C/C++ program to demonstrate Socket programming
 #include <unistd.h>
-#include <stdio.h>
 #include <iostream>
 #include <sys/socket.h>
-#include <stdlib.h>
 #include <netinet/in.h>
 #include <string.h>
-#include <string>
-#include <cstring>
 #include <pthread.h>
 #define PORT 8080
 
 using namespace std;
 // int sock;
 
-struct args {
-    char * buffer;
+struct args
+{
+    char *buffer;
     int socket;
 };
 
-void* reverse(void* arg)
-{
-    char *  buffer = ((struct args*)arg)->buffer;
-    int socket = ((struct args*)arg)->socket;
-    printf("Message From Client: %s\n", buffer);
-    string str = buffer;
-    string reversed = str;
-
-    int indexForReversed = 0;
-
-    for (int i = str.length(); i > 0; i--)
-        reversed[indexForReversed++] = str[i - 1];
-
-    char out[reversed.length()];
-    strcpy(out, reversed.c_str());
-
-    char convert[1] = {'k'};
-    printf("Message Sent To Client: %s\n", out);
-    send(socket, out, strlen(out), 0);
-    pthread_exit(0);
-}
+void *reverse(void *arg);
 
 int main(int argc, char const *argv[])
 {
-    // int numberOfThreads = atoi(argv[1]);
     int server_fd, new_socket, valread;
     struct sockaddr_in address;
     int opt = 1;
     int addrlen = sizeof(address);
-    // char *hello = "Hello from server";
 
     // Creating socket file descriptor
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
@@ -81,12 +56,8 @@ int main(int argc, char const *argv[])
         exit(EXIT_FAILURE);
     }
 
-    // sock = new_socket;
-
-
     while (true)
     {
-
         if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0)
         {
             perror("accept");
@@ -98,8 +69,31 @@ int main(int argc, char const *argv[])
         Message->buffer = buffer;
         Message->socket = new_socket;
         pthread_t reqeusts;
-        pthread_create(&reqeusts, NULL, &reverse, (void *) Message);
+        pthread_create(&reqeusts, NULL, &reverse, (void *)Message);
         pthread_join(reqeusts, NULL);
     }
     return 0;
+}
+
+void *reverse(void *arg)
+{
+    char *buffer = ((struct args *)arg)->buffer;
+    int socket = ((struct args *)arg)->socket;
+    printf("Message From Client: %s\n", buffer);
+    string str = buffer;
+    string reversed = str;
+
+    int indexForReversed = 0;
+
+    for (int i = str.length(); i > 0; i--)
+        reversed[indexForReversed++] = str[i - 1];
+
+    char out[reversed.length()];
+    strcpy(out, reversed.c_str());
+
+    char convert[1] = {'k'};
+    printf("Message Sent To Client: %s\n", out);
+    printf("-------------------------\n");
+    send(socket, out, strlen(out), 0);
+    pthread_exit(0);
 }
