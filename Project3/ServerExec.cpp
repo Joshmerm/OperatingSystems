@@ -6,6 +6,9 @@
 #include <string.h>
 #include <sys/wait.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
+#include <fstream>
+
 // #include <iostream>
 #include <sstream>
 // #include <pthread.h>
@@ -15,7 +18,7 @@ using namespace std;
 
 struct args
 {
-    char *buffer;
+    char *buffer[10];
     int socket;
 };
 
@@ -66,90 +69,79 @@ int main(int argc, char const *argv[])
             perror("accept");
             exit(EXIT_FAILURE);
         }
-        char *buffer[1024];
+        char buffer;
         int received_int = 0;
         int return_status = read(new_socket, &received_int, sizeof(received_int));
         int first = 1;
         int index = 0;
-        // int recieved = 0;
-        char commands[ntohl(received_int)];
+        char *commands[ntohl(received_int)];
+        string s = "";
         while (return_status > 0)
         {
 
-            if(first == 1){
+            if (first == 1)
+            {
                 fprintf(stdout, "Received int = %d\n", ntohl(received_int));
                 first = 0;
-            }else{
-
-                printf("%s\n", buffer);
-                // char s( buffer)];
-                // s = buffer;
-                // commands[index++] = buffer.c_str();
             }
-            return_status = read(new_socket, buffer, 1024);
-
+            else
+            {
+                s += buffer;
+                s += " ";
+                commands[index++] = &buffer;
+                cout << &buffer << endl;
+            }
+            return_status = read(new_socket, &buffer, sizeof(char *));
         }
+        commands[index++] = NULL;
 
-        // for(int i =0; i< ntohl(received_int); i++){
-        //     printf("%d: %s", i, commands[i]);
-        // }
-        // char* buffer[received_int];
-        // struct args *Message = (struct args *)malloc(sizeof(struct args));
-        // valread = read(new_socket, buffer, received_int*sizeof(char *));
-        // Message->buffer = buffer;
-        // Message->socket = new_socket;
-        // cout << buffer << endl;
-        // printf(buffer);
+        pid_t pid = fork();
 
-        // pid_t pid = fork();
+        if (pid == -1)
+        {
+            perror("fork");
+            exit(EXIT_FAILURE);
+        }
+        else if (pid > 0)
+        {
 
-        // if (pid == -1)
-        // {
-        //     perror("fork");
-        //     exit(EXIT_FAILURE);
-        // }
-        // else if (pid > 0)
-        // {
-        //     exec(Message);
+            // int fds = open("t.txt", O_CREAT | O_TRUNC | O_RDWR, 0644);
+            // if (fds < 0)
+            // {
+            //     perror("open()");
+            //     exit(EXIT_FAILURE);
+            // }
+            // int stdout_copy = dup(STDOUT_FILENO);
+            close(STDOUT_FILENO);
+            // dup2(fds, STDOUT_FILENO);
+            dup2(new_socket, STDOUT_FILENO);
+            // dup2(new_socket, STDERR_FILENO);
+            if (execvp("ls", commands) < 0)
+            {
+                fprintf(stderr, "Could not execute");
+                exit(1);
+            }else{
+                fprintf(stderr, "execute");
+            }
 
-        //     wait(nullptr);
-        // }
-        // else
-        // {
-        //     wait(&pid);
-        //     exit(EXIT_SUCCESS);
-        // }
+            // dup2(stdout_copy, STDOUT_FILENO);
+            // close(stdout_copy);
+            // char output[10000];
+            // ifstream myReadFile;
+            // myReadFile.open("t.txt");
+
+            // while (!myReadFile.eof())
+            // {
+            //     myReadFile >> output;
+            //     cout << output;
+            // }
+            // myReadFile.close();
+        }
+        else
+        {
+            // close(new_socket);
+            wait(&pid);
+        }
     }
     return 0;
-}
-
-void exec(void *arg)
-{
-
-    char *buffer = ((struct args *)arg)->buffer;
-    int socket = ((struct args *)arg)->socket;
-
-    stringstream geek(buffer);
-    int x = 0;
-    geek >> x;
-    // printf("Message From Client: %d\n", x);
-    // char *arr[] = {"ls", "-l"};
-    // for (int i = 0; i < 2; i++)
-    // {
-    //     printf("%s\n", arr[i]);
-    // }
-
-    // string str = buffer;
-    // string reversed = str;
-
-    // int indexForReversed = 0;
-
-    // for (int i = str.length(); i > 0; i--)
-    //     reversed[indexForReversed++] = str[i - 1];
-
-    // char out[reversed.length()];
-    // strcpy(out, reversed.c_str());
-
-    // send(socket, out, strlen(out), 0);
-    pthread_exit(0);
 }

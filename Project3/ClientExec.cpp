@@ -39,16 +39,20 @@ int main(int argc, char const *argv[])
     int tmp = htonl(n);
     write(sock, &tmp, sizeof(tmp));
     usleep(100);
+        cout << "asdasd";
+
     for(int i = 0; i < argc; i++){
-        write(sock, argv[i], 1024);
+        write(sock, argv[i], sizeof(char *));
     }
-    // write(sock, &tmp, sizeof(tmp));
-    // send(sock, &argv, 0);
-    // write(sock, &argc, sizeof(argc));
-    // printf("Message sent To Server: ");
-    // for(int i = 1; i < argc; i++)
-    //     printf("%s, ", argv[i]);
-    // valread = read(sock, buffer, 1024);
-    // printf("\nFrom Server: %s\n", buffer);
+    char buffer[1024] = {0};
+    cout << "asdasd";
+    int return_status = read(sock, buffer, sizeof(buffer));
+    // // valread = read(sock, buffer, 1024);
+     while (return_status > 0){
+         cout << "hello" << endl;
+         return_status = read(sock, buffer, sizeof(char *));
+     }
+    // printf("From Server: %s\n", buffer);
+
     return 0;
 }
