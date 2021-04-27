@@ -10,6 +10,7 @@
 #include <fcntl.h>
 #include <fstream>
 #include <stdio.h>
+#include <vector>
 
 // #include <iostream>
 #include <sstream>
@@ -71,13 +72,16 @@ int main(int argc, char const *argv[])
             perror("accept");
             exit(EXIT_FAILURE);
         }
-        char* buffer;
         int received_int = 0;
         int return_status = read(new_socket, &received_int, sizeof(received_int));
         int first = 1;
         int index = 0;
-        char *commands[ntohl(received_int) + 1];
-        // string s = "";
+        // char * commands[ntohl(received_int)] = {0};
+        int firstargv = 1;
+        string s ="";
+        vector<char *> commandVector;
+        commandVector.push_back("ls");
+        char *buffer;
         while (return_status > 0)
         {
 
@@ -85,20 +89,31 @@ int main(int argc, char const *argv[])
             {
                 fprintf(stdout, "Received int = %d\n", ntohl(received_int));
                 first = 0;
+            }else if(firstargv == 1){
+                firstargv = 0;
+                s = "ls";
+                // commands[index++] = "ls";
             }
             else
             {
-
-                char s = *buffer;
-                if(buffer != "-ls") exit(0);
-                commands[index++] = "-l";
-                cout << buffer << endl;
+                cout <<"asd" << buffer << endl;
             }
             return_status = read(new_socket, buffer, sizeof(char *));
         }
-        for (int i = 0; i < ntohl(received_int); i++)
+        commandVector.push_back(NULL);
+        char **command = &commandVector[0];
+        if(command[0] == NULL)
+         cout << "NULL" << endl;
+         else cout<< "Not NUll"<<endl;
+        // cout << commandVector[0] == NULL ? "NULL" : "Not NUll" << endl;
+        // vector<const char *> l = processString(s);
+
+
+
+        // commands[index] = NULL;
+        for (int i = 0; i < 3; i++)
         {
-            // printf(commands[i])
+            fprintf(stdout,"%s\n", command[i]);
         }
 
         // close(new_socket);
@@ -115,10 +130,11 @@ int main(int argc, char const *argv[])
             perror("Error Forking");
         if (pid == 0)
         {
-            cout << commands[0];
+            // cout << "asdasdasdasd" << commands[0] << endl;
             close(STDOUT_FILENO);
             dup2(fd, STDOUT_FILENO);
-            execlp("/bin/ls", "ls", commands[0], NULL);
+            char * s[] = {"ls", NULL};
+            execvp(command[0], command);
         }
         else if (pid > 0)
         {
@@ -160,7 +176,7 @@ int main(int argc, char const *argv[])
             // close(new_socket);
             // exit(0);
         }
-        fflush(stdout);
+        // fflush(stdout);
     }
     return 0;
 }
