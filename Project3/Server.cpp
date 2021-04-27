@@ -12,7 +12,8 @@ using namespace std;
 
 struct args
 {
-    char *buffer;
+
+    // char *buffer;
     int socket;
 };
 
@@ -63,13 +64,10 @@ int main(int argc, char const *argv[])
             perror("accept");
             exit(EXIT_FAILURE);
         }
-        char buffer[1024] = {0};
-        struct args *Message = (struct args *)malloc(sizeof(struct args));
-        valread = read(new_socket, buffer, 1024);
-        Message->buffer = buffer;
-        Message->socket = new_socket;
         pthread_t reqeusts;
-        pthread_create(&reqeusts, NULL, &reverse, (void *)Message);
+        struct args *Args = (struct args *)malloc(sizeof(struct args));
+        Args->socket = new_socket;
+        pthread_create(&reqeusts, NULL, &reverse, (void *)Args);
         pthread_join(reqeusts, NULL);
     }
     return 0;
@@ -77,23 +75,30 @@ int main(int argc, char const *argv[])
 
 void *reverse(void *arg)
 {
-    char *buffer = ((struct args *)arg)->buffer;
     int socket = ((struct args *)arg)->socket;
-    printf("Message From Client: %s\n", buffer);
-    string str = buffer;
-    string reversed = str;
+    char buffer[1024] = {0};
+    int valread = read(socket, buffer, 1024);
+    // while (valread > 0)
+    // {
+        printf("Message From Client: %s\n", buffer);
+        string str = buffer;
+        string reversed = str;
 
-    int indexForReversed = 0;
+        int indexForReversed = 0;
 
-    for (int i = str.length(); i > 0; i--)
-        reversed[indexForReversed++] = str[i - 1];
+        for (int i = str.length(); i > 0; i--)
+            reversed[indexForReversed++] = str[i - 1];
 
-    char out[reversed.length()];
-    strcpy(out, reversed.c_str());
+        char out[reversed.length()];
+        strcpy(out, reversed.c_str());
 
-    char convert[1] = {'k'};
-    printf("Message Sent To Client: %s\n", out);
-    printf("-------------------------\n");
-    send(socket, out, strlen(out), 0);
+        printf("Message Sent To Client: %s\n", out);
+        printf("-------------------------\n");
+        send(socket, out, strlen(out), 0);
+        memset(buffer, 0, sizeof(buffer));
+        valread = read(socket, buffer, 1024);
+        close(socket);
+
+    // }
     pthread_exit(0);
 }
