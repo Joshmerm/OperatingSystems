@@ -9,5 +9,5 @@ To Run <br>
 
 ### Client:
 `g++ -o client Client.cpp` <br>
-To Run You Must Use Command Line Arguments For The Message As Follows <br>
-`./client """Message With Spaces"""` <br>
+To Run <br>
+`./client` <br>

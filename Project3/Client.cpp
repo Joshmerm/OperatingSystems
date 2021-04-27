@@ -8,15 +8,7 @@
 using namespace std;
 int main(int argc, char const *argv[])
 {
-
-    // if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
-    // {
-    //     printf("\nConnection Failed \n");
-    //     return -1;
-    // }
-
-    bool stop = false;
-    while (!stop)
+    while (true)
     {
 
         int sock = 0, valread;
@@ -42,6 +34,7 @@ int main(int argc, char const *argv[])
         char buffer[1024] = {0};
         cout << "Please enter a string ";
         getline(cin, input);
+        if(input == "exit" || input == "Exit") exit(EXIT_SUCCESS);
         strcpy(buffer, input.c_str());
         if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
         {
