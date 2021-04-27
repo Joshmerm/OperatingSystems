@@ -38,20 +38,40 @@ int main(int argc, char const *argv[])
     int n = argc;
     int tmp = htonl(n);
     write(sock, &tmp, sizeof(tmp));
-    usleep(100);
-        cout << "asdasd";
+    // usleep(100);
 
-    for(int i = 0; i < argc; i++){
-        write(sock, argv[i], sizeof(char *));
+    for (int i = 0; i < argc; i++)
+    {
+        int n = write(sock, argv[i], sizeof(char *));
+        if (n < 0)
+            perror("error Writing to socket");
     }
-    char buffer[1024] = {0};
-    cout << "asdasd";
-    int return_status = read(sock, buffer, sizeof(buffer));
-    // // valread = read(sock, buffer, 1024);
-     while (return_status > 0){
-         cout << "hello" << endl;
-         return_status = read(sock, buffer, sizeof(char *));
-     }
+    char t[] = "hello";
+    // cout << "asdasd";
+    cout << t << endl;
+    char buffer[1000000] = {0};
+    usleep(2000);
+    valread = read( sock , buffer, 1000000);
+    printf("%s\n",buffer );
+    // int return_status = read(sock, buffer, strlen(buffer));
+
+    // printf("From Server: %s\n", &buffer);
+    // while (return_status > 0)
+    // {
+    //     cout << buffer << endl;
+    //     return_status = read(sock, buffer, 1024);
+    //     // cout << "Return Status:" << return_status << endl;
+    // }
+    close(sock);
+    // exit(0);
+    // // // valread = read(sock, buffer, 1024);
+    // cout << buffer << endl;
+    // string s = "Do you see this message\n"
+    // return_status = read(sock, buffer, s.length());
+    // cout << buffer << endl;
+    // close(sock);
+    //  cout << "hello" << endl;
+    //  return_status = read(sock, buffer, sizeof(char *));
     // printf("From Server: %s\n", buffer);
 
     return 0;

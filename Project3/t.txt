@@ -1,10 +1,10 @@
-total 80
--rwxrwxr-x 1 josh josh 17480 Apr 22 13:17 a.out
--rwxrwxr-x 1 josh josh 17768 Apr 26 16:38 client
--rw-rw-r-- 1 josh josh  1059 Apr 22 22:53 Client.cpp
--rw-rw-r-- 1 josh josh  1440 Apr 26 16:38 ClientExec.cpp
--rw-rw-r-- 1 josh josh   345 Apr 20 21:15 READEME.md
--rw-rw-r-- 1 josh josh  2517 Apr 22 13:07 Server.cpp
--rw-rw-r-- 1 josh josh  3722 Apr 26 16:43 ServerExec.cpp
--rwxrwxr-x 1 josh josh 18904 Apr 26 16:42 srv
--rw-r--r-- 1 josh josh     0 Apr 26 16:43 t.txt
+a.out
+client
+Client.cpp
+ClientExec.cpp
+README.md
+Server.cpp
+ServerExec.cpp
+srv
+srv3
+t.txt

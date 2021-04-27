@@ -5,9 +5,11 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <sys/types.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <fstream>
+#include <stdio.h>
 
 // #include <iostream>
 #include <sstream>
@@ -69,13 +71,13 @@ int main(int argc, char const *argv[])
             perror("accept");
             exit(EXIT_FAILURE);
         }
-        char buffer;
+        char* buffer;
         int received_int = 0;
         int return_status = read(new_socket, &received_int, sizeof(received_int));
         int first = 1;
         int index = 0;
-        char *commands[ntohl(received_int)];
-        string s = "";
+        char *commands[ntohl(received_int) + 1];
+        // string s = "";
         while (return_status > 0)
         {
 
@@ -86,62 +88,79 @@ int main(int argc, char const *argv[])
             }
             else
             {
-                s += buffer;
-                s += " ";
-                commands[index++] = &buffer;
-                cout << &buffer << endl;
+
+                char s = *buffer;
+                if(buffer != "-ls") exit(0);
+                commands[index++] = "-l";
+                cout << buffer << endl;
             }
-            return_status = read(new_socket, &buffer, sizeof(char *));
+            return_status = read(new_socket, buffer, sizeof(char *));
         }
-        commands[index++] = NULL;
-
-        pid_t pid = fork();
-
-        if (pid == -1)
+        for (int i = 0; i < ntohl(received_int); i++)
         {
-            perror("fork");
+            // printf(commands[i])
+        }
+
+        // close(new_socket);
+        int fd = open("t.txt", O_CREAT | O_TRUNC | O_RDWR, 0644);
+        if (fd < 0)
+        {
+            perror("open()");
             exit(EXIT_FAILURE);
+        }
+
+        int pid;
+        pid = fork();
+        if (pid < 0)
+            perror("Error Forking");
+        if (pid == 0)
+        {
+            cout << commands[0];
+            close(STDOUT_FILENO);
+            dup2(fd, STDOUT_FILENO);
+            execlp("/bin/ls", "ls", commands[0], NULL);
         }
         else if (pid > 0)
         {
-
-            // int fds = open("t.txt", O_CREAT | O_TRUNC | O_RDWR, 0644);
-            // if (fds < 0)
-            // {
-            //     perror("open()");
-            //     exit(EXIT_FAILURE);
-            // }
-            // int stdout_copy = dup(STDOUT_FILENO);
-            close(STDOUT_FILENO);
-            // dup2(fds, STDOUT_FILENO);
-            dup2(new_socket, STDOUT_FILENO);
-            // dup2(new_socket, STDERR_FILENO);
-            if (execvp("ls", commands) < 0)
-            {
-                fprintf(stderr, "Could not execute");
-                exit(1);
-            }else{
-                fprintf(stderr, "execute");
-            }
-
-            // dup2(stdout_copy, STDOUT_FILENO);
-            // close(stdout_copy);
-            // char output[10000];
-            // ifstream myReadFile;
-            // myReadFile.open("t.txt");
-
-            // while (!myReadFile.eof())
-            // {
-            //     myReadFile >> output;
-            //     cout << output;
-            // }
-            // myReadFile.close();
-        }
-        else
-        {
-            // close(new_socket);
             wait(&pid);
+            close(fd);
+            int pid2;
+            string myText;
+
+            pid2 = fork();
+            if (pid2 < 0)
+                perror("Error Forking");
+            if (pid2 == 0)
+            {
+                ifstream MyReadFile("t.txt");
+                string output = "";
+                while (getline(MyReadFile, myText))
+                {
+                    output += myText + "\n";
+                    // cout << myText << endl;
+                }
+                MyReadFile.close();
+                char out[1000000];
+                strcpy(out, output.c_str());
+                send(new_socket, out, 1000000, 0);
+                exit(0);
+            }
+            else
+            {
+                
+                wait(&pid2);
+                close(new_socket);
+
+            }
+            // char out[1000000];
+            // strcpy(out, output.c_str());
+            // char t[] = "hello";
+            // send(new_socket, t, strlen(t), 0);
+            // write(new_socket, t, strlen(t));
+            // close(new_socket);
+            // exit(0);
         }
+        fflush(stdout);
     }
     return 0;
 }
