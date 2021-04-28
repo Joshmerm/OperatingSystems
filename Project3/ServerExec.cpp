@@ -105,8 +105,6 @@ int main(int argc, char const *argv[])
         if(command[0] == NULL)
          cout << "NULL" << endl;
          else cout<< "Not NUll"<<endl;
-        // cout << commandVector[0] == NULL ? "NULL" : "Not NUll" << endl;
-        // vector<const char *> l = processString(s);
 
 
 
