@@ -11,6 +11,7 @@
 #include <fstream>
 #include <stdio.h>
 #include <vector>
+#include <bits/stdc++.h>
 
 // #include <iostream>
 #include <sstream>
@@ -26,6 +27,16 @@ struct args
 };
 
 void exec(void *arg);
+
+string convertToString(char* a, int size)
+{
+    int i;
+    string s = "";
+    for (i = 0; i < size; i++) {
+        s = s + a[i];
+    }
+    return s;
+}
 
 int main(int argc, char const *argv[])
 {
@@ -72,49 +83,30 @@ int main(int argc, char const *argv[])
             perror("accept");
             exit(EXIT_FAILURE);
         }
-        int received_int = 0;
-        int return_status = read(new_socket, &received_int, sizeof(received_int));
-        int first = 1;
-        int index = 0;
-        // char * commands[ntohl(received_int)] = {0};
-        int firstargv = 1;
-        string s ="";
-        vector<char *> commandVector;
-        commandVector.push_back("ls");
-        char *buffer;
-        while (return_status > 0)
-        {
+        
+        char buffer[1024] = {};
+        read(new_socket, &buffer, 1024);
 
-            if (first == 1)
-            {
-                fprintf(stdout, "Received int = %d\n", ntohl(received_int));
-                first = 0;
-            }else if(firstargv == 1){
-                firstargv = 0;
-                s = "ls";
-                // commands[index++] = "ls";
-            }
-            else
-            {
-                cout <<"asd" << buffer << endl;
-            }
-            return_status = read(new_socket, buffer, sizeof(char *));
-        }
-        commandVector.push_back(NULL);
-        char **command = &commandVector[0];
-        if(command[0] == NULL)
-         cout << "NULL" << endl;
-         else cout<< "Not NUll"<<endl;
-
-
-
-        // commands[index] = NULL;
-        for (int i = 0; i < 3; i++)
-        {
-            fprintf(stdout,"%s\n", command[i]);
+        cout << "reading: " << buffer << endl;
+        stringstream p(buffer);
+        // cout << p << endl;
+        vector<string> commands;
+        string tmp;
+        int counter = 0;
+        while(getline(p, tmp, ' ')){
+            commands.push_back(tmp);
+            counter++;
         }
 
-        // close(new_socket);
+        char* list[counter + 2];
+        list[0] = (char *) "ls";
+
+        for(int i = 0; i < counter; i++)
+            list[i + 1] = (char *) commands[i].c_str();
+
+        list[counter + 1] = NULL;
+
+        
         int fd = open("t.txt", O_CREAT | O_TRUNC | O_RDWR, 0644);
         if (fd < 0)
         {
@@ -131,8 +123,8 @@ int main(int argc, char const *argv[])
             // cout << "asdasdasdasd" << commands[0] << endl;
             close(STDOUT_FILENO);
             dup2(fd, STDOUT_FILENO);
-            char * s[] = {"ls", NULL};
-            execvp(command[0], command);
+            // char *s[] = {"ls", NULL};
+            execvp(list[0], list);
         }
         else if (pid > 0)
         {
@@ -161,10 +153,9 @@ int main(int argc, char const *argv[])
             }
             else
             {
-                
+
                 wait(&pid2);
                 close(new_socket);
-
             }
             // char out[1000000];
             // strcpy(out, output.c_str());
