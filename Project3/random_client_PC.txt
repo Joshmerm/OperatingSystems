@@ -1,0 +1,65 @@
+1. keep the client as the same
+std::string conv = argv[0];
+N = std::stoi(conv);
+implementing seed
+
+use for loop to replace while loop
+for (int i = 0; i < N; i ++) {
+
+}
+
+2. new parameter
+char command[2] = {'W', 'R'};
+int sizes[2];
+int rand;
+rand = rand % 2;
+
+either declare before the while loop or as global variable
+
+3. after your socket connect by the connect function
+
+4. look up I from the server
+
+buffer = "2 3"
+buffer[0] = T
+buffer[1] = ' '
+buffer[2] = S
+-----------------
+std::string s = buffer;
+std::stringstream ex(s);
+std::string temp;
+while(getline(ex, temp, ' ')) {
+	sizes[0] = first_string_before_the_space
+	sizes[1] = second_string_before_the_space
+}
+
+rand = rand % 2;
+std::string send_over = "";
+send_over += command[rand] + " ";
+rand = rand % sizes[0] + 1;
+send_over += rand + " ";
+rand = rand % sizes[1] + 1;
+send_over += rand;
+if (rand == 0) {
+	send_over += " ";
+	char c;
+	for (int j = 0; j < 128; j ++) {
+		c = rand % (# of ASCII) + 1;
+		send_over += c;
+		if (j != 127) {
+			send_over += " ";
+		}
+	}
+
+send(socket, send_over.c_str(), send_over.length(), 0);
+
+char buffer[1] = {0};
+valread = read(sock, buffer, 1);
+
+std::cout << buffer << "\n";
+
+usleep(10000);
+}
+
+
+
