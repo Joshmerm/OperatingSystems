@@ -129,13 +129,22 @@ void remove_related_file(FileSystem* fs, int level) {
         }
         int count = file_level[nextLevel].size();
         for (int i = 0; i < count; i ++) {
+            //if it matches the parent id then delete
             if ( (file_level[nextLevel][i]->parentID[0] == fs->fileID[0]) &&
                 (file_level[nextLevel][i]->parentID[1] == fs->fileID[1]) ) {
 
                     file_level[nextLevel].erase(file_level[nextLevel].begin() + i);
                     i --;
                     count = file_level[nextLevel].size();
-                }
+            }
+            // else, set the rest of the file's id and parent id 1 position before
+            // the level id will remain the same
+            else {
+                int current_id = (file_level[nextLevel][i]->fileID[1] - 1);
+                int current_parentID2 = (file_level[nextLevel][i]->parentID[1] - 1);
+                file_level[nextLevel][i]->fileID[1] = current_id;
+                file_level[nextLevel][i]->parentID[1] = current_parentID2;
+            }
         }
         //if the next level is empty after remove all files, erase the level as well
         if (file_level[nextLevel].size() == 0) {
@@ -358,7 +367,7 @@ void *read_file(void *request)
     {
         if (filename.length() <= 4)
         {
-            message = "2";
+            message = "2 file name does not match the requirement";
             std::cout << "file name has a length <= 4 which cannot hold .txt as extension\n";
         }
         else
@@ -392,7 +401,7 @@ void *read_file(void *request)
     }
     else
     {
-        message = "2";
+        message = "2 there is no file";
         std::cout << "the request level does not exist\n";
     }
 
@@ -421,7 +430,7 @@ void *write_file(void *request)
 
         if (filename.length() <= 4)
         {
-            message = "2";
+            message = "2 file name does not match the requirement";
             std::cout << "file name has a length <= 4 which cannot hold .txt as extension\n";
         }
         else
@@ -460,13 +469,13 @@ void *write_file(void *request)
                     pthread_exit(0);
                 }
             }
-            std::cout << "file not find, return 1 to the cllient; ignore if the file was found"
+            std::cout << "file not find, return 1 to the cllient"
                       << "\n";
         }
     }
     else
     {
-        message = "2";
+        message = "2 there is no file";
         std::cout << "the request level does not exist\n";
     }
 
@@ -491,7 +500,7 @@ void *create_file(void *request)
     //if a file name is <= 4 which means it cannot hold the .txt extension
     if (filename.length() <= 4)
     {
-        message = "2";
+        message = "2 file name does not match the requirement";
         std::cout << "file name has a length <= 4 which cannot hold .txt as extension\n";
         send(sock, message.c_str(), message.length(), 0);
         pthread_exit(0);
@@ -507,7 +516,7 @@ void *create_file(void *request)
         }
         if (extension.compare(".txt") != 0)
         {
-            message = "2";
+            message = "2 file name does not match the requirement";
             std::cout << "the file did not declare .txt as extension\n";
             send(sock, message.c_str(), message.length(), 0);
             pthread_exit(0);
@@ -541,17 +550,17 @@ void *create_file(void *request)
                 if ( (file_level[nextLevel][i]->parentID[0] == current->fileID[0]) &&
                     (file_level[nextLevel][i]->parentID[1] == current->fileID[1]) )
                 {
-                    message = "1";
+                    message = "1 file already exist";
                     std::cout << "fail to create the file, file name is already existed\n";
                     send(sock, message.c_str(), message.length(), 0);
                     pthread_exit(0);
                 }
             }
         }
-        id[0] = file_level.size() - 1;
-        id[1] = file_level[nextLevel].size();
+        id[0] = (current->fileID[0] + 1);
+        id[1] = file_level[id[0]].size();
         FileSystem *nfile = newFile(filename, id, pa_id, "_");
-        file_level[nextLevel].push_back(nfile);
+        file_level[id[0]].push_back(nfile);
         message = "0";
         std::cout << "file created successfully\n";
     }
@@ -578,7 +587,7 @@ void *delete_file(void *request) {
     //if a file name is <= 4 which means it cannot hold the .txt extension
     if (filename.length() <= 4)
     {
-        message = "2";
+        message = "2 file name does not match the requirement";
         std::cout << "file name has a length <= 4 which cannot hold .txt as extension\n";
         send(sock, message.c_str(), message.length(), 0);
         pthread_exit(0);
@@ -594,7 +603,7 @@ void *delete_file(void *request) {
         }
         if (extension.compare(".txt") != 0)
         {
-            message = "2";
+            message = "2 file name does not match the requirement";
             std::cout << "the file did not declare .txt as extension\n";
             send(sock, message.c_str(), message.length(), 0);
             pthread_exit(0);
@@ -604,7 +613,7 @@ void *delete_file(void *request) {
     // if there is no next level for the current level, no file will be found
     if (nextLevel >= file_level.size())
     {
-        message = "1";
+        message = "1 file does not exist";
         std::cout << "file does not exist\n";
     }
     else
@@ -706,10 +715,10 @@ struct sockPass *input = (struct sockPass *)request;
             }
         }
         // if passed the check, create the directory
-        id[0] = file_level.size() - 1;
-        id[1] = file_level[nextLevel].size();
+        id[0] = current->fileID[0] + 1;
+        id[1] = file_level[id[0]].size();
         FileSystem *nfile = newFile(filename, id, pa_id);
-        file_level[nextLevel].push_back(nfile);
+        file_level[id[0]].push_back(nfile);
         message = "0";
         std::cout << "directory created successfully\n";
     }
@@ -771,7 +780,7 @@ void *change_directory(void *request) {
         }
         if (extension.compare(".txt") == 0)
         {
-            message = "2";
+            message = "2 file name does not match the requirement";
             std::cout << "cannot change directory, because the file declare .txt as its extension\n";
             send(sock, message.c_str(), message.length(), 0);
             pthread_exit(0);
@@ -782,7 +791,7 @@ void *change_directory(void *request) {
     // or aka, if the next level has not initilize its size yet
     if (nextLevel >= file_level.size())
     {
-        message = "1";
+        message = "1 no such directory";
         std::cout << "no direcotry exist, fail to change directory\n";
     }
     else
@@ -807,7 +816,7 @@ void *change_directory(void *request) {
             }
         }
         // if passed the check, fail to change directory
-        message = "0";
+        message = "1 no such directory";
         std::cout << "directory not exist\n";
     }
     
@@ -874,7 +883,7 @@ void *remove_directory(void *request) {
         }
         if (extension.compare(".txt") == 0)
         {
-            message = "2";
+            message = "2 file name does not match the requirement";
             std::cout << "the file name declare itself .txt as its extension\n";
             send(sock, message.c_str(), message.length(), 0);
             pthread_exit(0);
@@ -885,7 +894,7 @@ void *remove_directory(void *request) {
     // because it didn't declare a new level
     if (nextLevel >= file_level.size())
     {
-        message = "1";
+        message = "1 no such directory";
         std::cout << "directory does not exist\n";
     }
     else
@@ -901,6 +910,10 @@ void *remove_directory(void *request) {
                 {
                     remove_related_file(file_level[nextLevel][i], nextLevel);
                     file_level[nextLevel].erase(file_level[nextLevel].begin() + i);
+                    for (int i = 0; i < file_level[nextLevel].size(); i ++) {
+                        int current_id = (file_level[nextLevel][i]->fileID[1] - 1);
+                        file_level[nextLevel][i]->fileID[1] = current_id; 
+                    }
                     update_file_system();
                     message = "0";
                     std::cout << "directory deleted\n";
@@ -909,7 +922,7 @@ void *remove_directory(void *request) {
                 }
             }
         }
-        message = "1";
+        message = "1 no such directory";
         std::cout << "directory does not exist\n";
     }
 
@@ -1020,50 +1033,102 @@ int main(int argc, char *argv[])
         }
         else if (command_list[0].compare("C") == 0)
         {
-            arg->socket = new_socket;
-            arg->file = command_list[1];
-            pthread_create(&pt, NULL, &create_file, (void *)arg);
-            pthread_join(pt, NULL);
+            if (command_list.size() < 2) {
+                message = "Unknown command, please try again (input case is sensitive)";
+                std::cout << "Unknown command received from the client, no information return\n";
+                send(new_socket, message.c_str(), message.length(), 0);
+            }
+            else {
+                arg->socket = new_socket;
+                arg->file = command_list[1];
+                pthread_create(&pt, NULL, &create_file, (void *)arg);
+                pthread_join(pt, NULL);
+            }
         }
         else if (command_list[0].compare("D") == 0) {
-            arg->socket = new_socket;
-            arg->file = command_list[1];
-            pthread_create(&pt, NULL, &delete_file, (void *)arg);
-            pthread_join(pt, NULL);
+            if (command_list.size() < 2) {
+                message = "Unknown command, please try again (input case is sensitive)";
+                std::cout << "Unknown command received from the client, no information return\n";
+                send(new_socket, message.c_str(), message.length(), 0);
+            }
+            else {
+                arg->socket = new_socket;
+                arg->file = command_list[1];
+                pthread_create(&pt, NULL, &delete_file, (void *)arg);
+                pthread_join(pt, NULL);
+            }
         }
         else if (command_list[0].compare("L") == 0)
         {
-            arg->socket = new_socket;
-            arg->flag = std::stoi(command_list[1]);
-            pthread_create(&pt, NULL, &listing, (void *)arg);
-            pthread_join(pt, NULL);
+            if (command_list.size() < 2) {
+                message = "Unknown command, please try again (input case is sensitive)";
+                std::cout << "Unknown command received from the client, no information return\n";
+                send(new_socket, message.c_str(), message.length(), 0);
+            }
+            else {
+                arg->socket = new_socket;
+                arg->flag = std::stoi(command_list[1]);
+                pthread_create(&pt, NULL, &listing, (void *)arg);
+                pthread_join(pt, NULL);
+            }
         }
         else if (command_list[0].compare("R") == 0)
         {
-            arg->socket = new_socket;
-            arg->file = command_list[1];
-            pthread_create(&pt, NULL, &read_file, (void *)arg);
-            pthread_join(pt, NULL);
+            if (command_list.size() < 2) {
+                message = "Unknown command, please try again (input case is sensitive)";
+                std::cout << "Unknown command received from the client, no information return\n";
+                send(new_socket, message.c_str(), message.length(), 0);
+            }
+            else {
+                arg->socket = new_socket;
+                arg->file = command_list[1];
+                pthread_create(&pt, NULL, &read_file, (void *)arg);
+                pthread_join(pt, NULL);
+            }
         }
         else if (command_list[0].compare("W") == 0)
         {
-            arg->socket = new_socket;
-            arg->file = command_list[1];
-            arg->input = command_list[2];
-            pthread_create(&pt, NULL, &write_file, (void *)arg);
-            pthread_join(pt, NULL);
+            if (command_list.size() < 3) {
+                message = "Unknown command, please try again (input case is sensitive)";
+                std::cout << "Unknown command received from the client, no information return\n";
+                send(new_socket, message.c_str(), message.length(), 0);
+            }
+            else {
+                arg->socket = new_socket;
+                arg->file = command_list[1];
+                arg->input = command_list[2];
+                pthread_create(&pt, NULL, &write_file, (void *)arg);
+                pthread_join(pt, NULL);
+            }
+
         }
         else if (command_list[0].compare("mkdir") == 0) {
-            arg->socket = new_socket;
-            arg->file = command_list[1];
-            pthread_create(&pt, NULL, &make_directory, (void *)arg);
-            pthread_join(pt, NULL);
+            if (command_list.size() < 2) {
+                message = "Unknown command, please try again (input case is sensitive)";
+                std::cout << "Unknown command received from the client, no information return\n";
+                send(new_socket, message.c_str(), message.length(), 0);
+            }
+            else {
+                arg->socket = new_socket;
+                arg->file = command_list[1];
+                pthread_create(&pt, NULL, &make_directory, (void *)arg);
+                pthread_join(pt, NULL);
+            }
+
         }
         else if (command_list[0].compare("cd") == 0) {
-            arg->socket = new_socket;
-            arg->file = command_list[1];
-            pthread_create(&pt, NULL, &change_directory, (void *)arg);
-            pthread_join(pt, NULL);
+            if (command_list.size() < 2) {
+                message = "Unknown command, please try again (input case is sensitive)";
+                std::cout << "Unknown command received from the client, no information return\n";
+                send(new_socket, message.c_str(), message.length(), 0);
+            }
+            else {
+                arg->socket = new_socket;
+                arg->file = command_list[1];
+                pthread_create(&pt, NULL, &change_directory, (void *)arg);
+                pthread_join(pt, NULL);
+            }
+
         }
         else if (command_list[0].compare("pwd") == 0) {
             arg->socket = new_socket;
@@ -1071,10 +1136,17 @@ int main(int argc, char *argv[])
             pthread_join(pt, NULL);
         }
         else if (command_list[0].compare("rmdir") == 0) {
-            arg->socket = new_socket;
-            arg->file = command_list[1];
-            pthread_create(&pt, NULL, &remove_directory, (void *)arg);
-            pthread_join(pt, NULL);
+            if (command_list.size() < 2) {
+                message = "Unknown command, please try again (input case is sensitive)";
+                std::cout << "Unknown command received from the client, no information return\n";
+                send(new_socket, message.c_str(), message.length(), 0);
+            }
+            else {
+                arg->socket = new_socket;
+                arg->file = command_list[1];
+                pthread_create(&pt, NULL, &remove_directory, (void *)arg);
+                pthread_join(pt, NULL);
+            }
         }
         else
         {
