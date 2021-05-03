@@ -20,6 +20,10 @@ int main(int argc, char *argv[]) {
     std::cout << "[W]rite a peice of data to a specific file (ex. W test.txt hello)\n";
     std::cout << "[C]reate a file with .txt extension only under the current directory (ex. C test.txt (it must contain an extension))\n";
     std::cout << "[D]elete a file untder the current directory (ex. D test.txt)\n";
+    std::cout << "[mkdir] to make a directory (ex. mkdir test)\n";
+    std::cout << "[cd] to change directory (ex. cd test or .. to go back up one directory or ... back to the root file)\n";
+    std::cout << "[pwd] to show the current working path (ex. pwd)\n";
+    std::cout << "[rmdir] to remove a directory (ex. rmdir test)\n";
     std::cout << "[exit] to exit the client\n";
     std::cout << "When you see 0 before the data, it means processed successfully; if 1, it means processed failed; if 2, fail due to special issues\n";
     std::cout << "------------------------------------------------------------\n";

@@ -36,7 +36,7 @@ FileSystem *rootFile;
 std::vector<FileSystem *> pwd;
 std::vector<std::vector<FileSystem *>> file_level;
 std::string message;
-short dataStored = 0;
+int dataStored = 0;
 
 // fileID[0] = file level number; [1] = file number at current level
 FileSystem *newFile(std::string fname, int id[2])
@@ -109,6 +109,40 @@ void update_file_system()
         {
             update << "\n";
         }
+    }
+}
+
+void remove_related_file(FileSystem* fs, int level) {
+    if (level == (file_level.size() - 1)) {
+        //base case
+        std::cout << "Reaches to the end level\n";
+    }
+    else {
+        //remove all the related file
+        int nextLevel = (fs->fileID[0]) + 1;
+        for (int i = 0; i < file_level[nextLevel].size(); i++) {
+            if ( (file_level[nextLevel][i]->parentID[0] == fs->fileID[0]) &&
+                (file_level[nextLevel][i]->parentID[1] == fs->fileID[1]) ) {
+
+                    remove_related_file(file_level[nextLevel][i], nextLevel);
+            }
+        }
+        int count = file_level[nextLevel].size();
+        for (int i = 0; i < count; i ++) {
+            if ( (file_level[nextLevel][i]->parentID[0] == fs->fileID[0]) &&
+                (file_level[nextLevel][i]->parentID[1] == fs->fileID[1]) ) {
+
+                    file_level[nextLevel].erase(file_level[nextLevel].begin() + i);
+                    i --;
+                    count = file_level[nextLevel].size();
+                }
+        }
+        //if the next level is empty after remove all files, erase the level as well
+        if (file_level[nextLevel].size() == 0) {
+            file_level.erase(file_level.begin() + nextLevel);
+        }
+
+        std::cout << "finish one level\n";
     }
 }
 
@@ -231,7 +265,6 @@ void *read_file_system(void *request)
     current = file_level[0][0];
     rootFile = file_level[0][0];
     pwd.push_back(rootFile);
-
     pthread_exit(0);
 }
 
@@ -262,6 +295,7 @@ void *listing(void *request)
     int flag = ((struct sockPass *)request)->flag;
     if (in_fs.is_open())
     {
+        std::cout << current->fileName << "\n";
         int nextLevel = (current->fileID[0]) + 1;
 
         //if there does not exist a next level, then return empty string
@@ -504,7 +538,8 @@ void *create_file(void *request)
         {
             if ((file_level[nextLevel][i]->fileName).compare(filename) == 0)
             {
-                if ((file_level[nextLevel][i]->parentID[0] == current->fileID[0]))
+                if ( (file_level[nextLevel][i]->parentID[0] == current->fileID[0]) &&
+                    (file_level[nextLevel][i]->parentID[1] == current->fileID[1]) )
                 {
                     message = "1";
                     std::cout << "fail to create the file, file name is already existed\n";
@@ -580,7 +615,8 @@ void *delete_file(void *request) {
         {
             if ((file_level[nextLevel][i]->fileName).compare(filename) == 0)
             {
-                if ((file_level[nextLevel][i]->parentID[0] == current->fileID[0]))
+                if ( (file_level[nextLevel][i]->parentID[0] == current->fileID[0]) &&
+                    (file_level[nextLevel][i]->parentID[1] == current->fileID[1]) )
                 {
                 file_level[nextLevel].erase(file_level[nextLevel].begin() + i);
                 update_file_system();
@@ -593,6 +629,288 @@ void *delete_file(void *request) {
         }
         message = "1";
         std::cout << "file does not exist\n";
+    }
+
+  
+
+    send(sock, message.c_str(), message.length(), 0);
+
+    pthread_exit(0);
+}
+
+//make directory has a similar logic as create_file, but it check to see the file name as not in a .txt format
+void *make_directory(void *request) {
+struct sockPass *input = (struct sockPass *)request;
+    int sock = input->socket;
+    std::string filename = input->file;
+    if (!(in_fs.is_open())) {
+        message = "Error, there is no file system";
+        std::cout << "No file system in use\n";
+        send(sock, message.c_str(), message.length(), 0);
+        pthread_exit(0);
+    }
+    int nextLevel = (current->fileID[0]) + 1;
+
+    //if a file name is > 4, check to see if the file declare as a .txt extension
+    if (filename.length() > 4)
+    {
+        int checkposition = filename.length() - 4;
+        std::string extension;
+        for (int i = checkposition; i < filename.length(); i++)
+        {
+            extension += filename[i];
+        }
+        if (extension.compare(".txt") == 0)
+        {
+            message = "2";
+            std::cout << "cannot make directory, because the file declare .txt as its extension\n";
+            send(sock, message.c_str(), message.length(), 0);
+            pthread_exit(0);
+        }
+    }
+
+    // if this file is the first file/directory in the next level, push it directly
+    // or aka, if the next level has not initilize its size yet
+    if (nextLevel >= file_level.size())
+    {
+        int id[2];
+        int pa_id[2] = {(current->fileID[0]), (current->fileID[1])};
+        std::vector<FileSystem *> newLevel;
+        id[0] = file_level.size();
+        id[1] = 0;
+        FileSystem *nfile = newFile(filename, id, pa_id);
+        newLevel.push_back(nfile);
+        file_level.push_back(newLevel);
+       
+        message = "0";
+        std::cout << "directory created successfully\n";
+    }
+    else
+    {
+        int id[2];
+        int pa_id[2] = {(current->fileID[0]), (current->fileID[1])};
+        //check if there is duplicated directory being created
+        for (int i = 0; i < file_level[nextLevel].size(); i++)
+        {   // first check its directory name
+            if ((file_level[nextLevel][i]->fileName).compare(filename) == 0)
+            {
+                // if true, see if they belong to the same parent by tracking their parent's id and the current directroy's id
+                if ( (file_level[nextLevel][i]->parentID[0] == current->fileID[0]) &&
+                    (file_level[nextLevel][i]->parentID[1] == current->fileID[1]) )
+                {
+                    message = "1";
+                    std::cout << "fail to create the directory, directory name is already existed\n";
+                    send(sock, message.c_str(), message.length(), 0);
+                    pthread_exit(0);
+                }
+            }
+        }
+        // if passed the check, create the directory
+        id[0] = file_level.size() - 1;
+        id[1] = file_level[nextLevel].size();
+        FileSystem *nfile = newFile(filename, id, pa_id);
+        file_level[nextLevel].push_back(nfile);
+        message = "0";
+        std::cout << "directory created successfully\n";
+    }
+
+    update_file_system();
+
+    send(sock, message.c_str(), message.length(), 0);
+
+    pthread_exit(0);
+}
+
+// alike make_directory
+void *change_directory(void *request) {
+    struct sockPass* infor = (struct sockPass*) request;
+    int sock = infor->socket;
+    std::string filename = infor->file;
+
+    if (!(in_fs.is_open())) {
+        message = "Error, there is no file system";
+        std::cout << "No file system in use\n";
+        send(sock, message.c_str(), message.length(), 0);
+        pthread_exit(0);
+    }
+    //spacial cases
+    if (filename.compare("..") == 0) {
+        if (pwd.size() == 1) {
+            message = "1";
+            std::cout << "already in the root\n";
+            send(sock, message.c_str(), message.length(), 0);
+            pthread_exit(0);
+        }
+        message = "0";
+        pwd.pop_back();
+        current = pwd[pwd.size() - 1];
+        std::cout << "directory changed\n";
+        send(sock, message.c_str(), message.length(), 0);
+        pthread_exit(0);
+    }
+    if (filename.compare("...") == 0) {
+        message = "0";
+        pwd.clear();
+        current = rootFile;
+        pwd.push_back(current);
+        std::cout << "directory changed\n";
+        send(sock, message.c_str(), message.length(), 0);
+        pthread_exit(0);
+    }
+
+    int nextLevel = (current->fileID[0]) + 1;
+
+    //if a file name is > 4, check to see if the file declare as a .txt extension
+    if (filename.length() > 4)
+    {
+        int checkposition = filename.length() - 4;
+        std::string extension;
+        for (int i = checkposition; i < filename.length(); i++)
+        {
+            extension += filename[i];
+        }
+        if (extension.compare(".txt") == 0)
+        {
+            message = "2";
+            std::cout << "cannot change directory, because the file declare .txt as its extension\n";
+            send(sock, message.c_str(), message.length(), 0);
+            pthread_exit(0);
+        }
+    }
+
+    // if this file is the first file/directory in the next level, fail to change directory
+    // or aka, if the next level has not initilize its size yet
+    if (nextLevel >= file_level.size())
+    {
+        message = "1";
+        std::cout << "no direcotry exist, fail to change directory\n";
+    }
+    else
+    {
+        //check if there is exist directory for change directory
+        for (int i = 0; i < file_level[nextLevel].size(); i++)
+        {   // first check its directory name
+            if ((file_level[nextLevel][i]->fileName).compare(filename) == 0)
+            {
+                // if true, see if they belong to the same parent by tracking their parent's id and the current directroy's id
+                if ( (file_level[nextLevel][i]->parentID[0] == current->fileID[0]) &&
+                    (file_level[nextLevel][i]->parentID[1] == current->fileID[1]) )
+                {
+                    message = "0";
+                    current = NULL;
+                    current = file_level[nextLevel][i];
+                    pwd.push_back(current);
+                    std::cout << "directory changed\n";
+                    send(sock, message.c_str(), message.length(), 0);
+                    pthread_exit(0);
+                }
+            }
+        }
+        // if passed the check, fail to change directory
+        message = "0";
+        std::cout << "directory not exist\n";
+    }
+    
+    send(sock, message.c_str(), message.length(), 0);
+    pthread_exit(0);
+
+}
+
+// print workign directory
+void *print_working_directory(void* request) {
+    struct sockPass* infor = (struct sockPass*) request;
+    int sock = infor->socket;
+
+    if (!(in_fs.is_open())) {
+        message = "Error, there is no file system";
+        std::cout << "No file system in use\n";
+        send(sock, message.c_str(), message.length(), 0);
+        pthread_exit(0);
+    }
+
+    std::string output;
+    for (int i = 0; i < pwd.size(); i ++) {
+        std::string temp = (pwd[i]->fileName);
+        output += temp;
+        if (i != (pwd.size() - 1)) {
+            output += "/";
+        }
+    }
+
+    std::cout << "printed work directory\n";
+    send(sock, output.c_str(), output.length(), 0);
+
+    pthread_exit(0);
+
+}
+
+// remove directory, same as make directory, has a similar logic as delete_file
+void *remove_directory(void *request) {
+    struct sockPass *input = (struct sockPass *)request;
+    int sock = input->socket;
+    std::string filename = input->file;
+    if (!(in_fs.is_open())) {
+        message = "Error, there is no file system";
+        std::cout << "No file system in use\n";
+        send(sock, message.c_str(), message.length(), 0);
+        pthread_exit(0);
+    }
+    if (file_level.size() == 1) {
+        message = "ERROR, cannot remove the root file, if you want to remove the whole file system, try [RESET]";
+        std::cout << "cannot remove the root file\n";
+        send(sock, message.c_str(), message.length(), 0);
+        pthread_exit(0);
+    }
+    int nextLevel = (current->fileID[0]) + 1;
+
+    //if a file name is > 4 which means check if the file name contain .txt extention
+    if (filename.length() > 4)
+    {
+        int checkposition = filename.length() - 4;
+        std::string extension;
+        for (int i = checkposition; i < filename.length(); i++)
+        {
+            extension += filename[i];
+        }
+        if (extension.compare(".txt") == 0)
+        {
+            message = "2";
+            std::cout << "the file name declare itself .txt as its extension\n";
+            send(sock, message.c_str(), message.length(), 0);
+            pthread_exit(0);
+        }
+    }
+
+    // if there is no next level for the current level, no file will be found
+    // because it didn't declare a new level
+    if (nextLevel >= file_level.size())
+    {
+        message = "1";
+        std::cout << "directory does not exist\n";
+    }
+    else
+    {
+        int id[2];
+        int pa_id[2] = {(current->fileID[0]), (current->fileID[1])};
+        for (int i = 0; i < file_level[nextLevel].size(); i++)
+        {
+            if ((file_level[nextLevel][i]->fileName).compare(filename) == 0)
+            {
+                if ( (file_level[nextLevel][i]->parentID[0] == current->fileID[0]) &&
+                    (file_level[nextLevel][i]->parentID[1] == current->fileID[1]) )
+                {
+                    remove_related_file(file_level[nextLevel][i], nextLevel);
+                    file_level[nextLevel].erase(file_level[nextLevel].begin() + i);
+                    update_file_system();
+                    message = "0";
+                    std::cout << "directory deleted\n";
+                    send(sock, message.c_str(), message.length(), 0);
+                    pthread_exit(0);
+                }
+            }
+        }
+        message = "1";
+        std::cout << "directory does not exist\n";
     }
 
   
@@ -663,7 +981,7 @@ int main(int argc, char *argv[])
             {
                 pthread_create(&pt, NULL, &read_file_system, NULL);
                 pthread_join(pt, NULL);
-                dataStored == 1;
+                dataStored = 1;
             }
         }
 
@@ -691,9 +1009,7 @@ int main(int argc, char *argv[])
         }
         else if (command_list[0].compare("F") == 0)
         {
-
             arg->socket = new_socket;
-
             pthread_create(&pt, NULL, &create_file_system, (void *)arg);
             pthread_join(pt, NULL);
         }
@@ -735,6 +1051,29 @@ int main(int argc, char *argv[])
             arg->file = command_list[1];
             arg->input = command_list[2];
             pthread_create(&pt, NULL, &write_file, (void *)arg);
+            pthread_join(pt, NULL);
+        }
+        else if (command_list[0].compare("mkdir") == 0) {
+            arg->socket = new_socket;
+            arg->file = command_list[1];
+            pthread_create(&pt, NULL, &make_directory, (void *)arg);
+            pthread_join(pt, NULL);
+        }
+        else if (command_list[0].compare("cd") == 0) {
+            arg->socket = new_socket;
+            arg->file = command_list[1];
+            pthread_create(&pt, NULL, &change_directory, (void *)arg);
+            pthread_join(pt, NULL);
+        }
+        else if (command_list[0].compare("pwd") == 0) {
+            arg->socket = new_socket;
+            pthread_create(&pt, NULL, &print_working_directory, (void *)arg);
+            pthread_join(pt, NULL);
+        }
+        else if (command_list[0].compare("rmdir") == 0) {
+            arg->socket = new_socket;
+            arg->file = command_list[1];
+            pthread_create(&pt, NULL, &remove_directory, (void *)arg);
             pthread_join(pt, NULL);
         }
         else
