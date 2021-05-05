@@ -28,11 +28,12 @@ struct args
 
 void exec(void *arg);
 
-string convertToString(char* a, int size)
+string convertToString(char *a, int size)
 {
     int i;
     string s = "";
-    for (i = 0; i < size; i++) {
+    for (i = 0; i < size; i++)
+    {
         s = s + a[i];
     }
     return s;
@@ -83,7 +84,7 @@ int main(int argc, char const *argv[])
             perror("accept");
             exit(EXIT_FAILURE);
         }
-        
+
         char buffer[1024] = {};
         read(new_socket, &buffer, 1024);
 
@@ -93,20 +94,20 @@ int main(int argc, char const *argv[])
         vector<string> commands;
         string tmp;
         int counter = 0;
-        while(getline(p, tmp, ' ')){
+        while (getline(p, tmp, ' '))
+        {
             commands.push_back(tmp);
             counter++;
         }
 
-        char* list[counter + 2];
-        list[0] = (char *) "ls";
+        char *list[counter + 2];
+        list[0] = (char *)"ls";
 
-        for(int i = 0; i < counter; i++)
-            list[i + 1] = (char *) commands[i].c_str();
+        for (int i = 0; i < counter; i++)
+            list[i + 1] = (char *)commands[i].c_str();
 
         list[counter + 1] = NULL;
 
-        
         int fd = open("t.txt", O_CREAT | O_TRUNC | O_RDWR, 0644);
         if (fd < 0)
         {
@@ -146,6 +147,8 @@ int main(int argc, char const *argv[])
                     // cout << myText << endl;
                 }
                 MyReadFile.close();
+                if (remove("t.txt") != 0)
+                    perror("Error deleting file");
                 char out[1000000];
                 strcpy(out, output.c_str());
                 send(new_socket, out, 1000000, 0);

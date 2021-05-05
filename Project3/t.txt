@@ -1,9 +1,0 @@
-client
-Client.cpp
-ClientExec.cpp
-README.md
-Server.cpp
-ServerExec.cpp
-srv
-srv3
-t.txt
