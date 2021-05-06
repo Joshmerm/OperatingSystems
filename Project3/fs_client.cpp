@@ -12,6 +12,7 @@ int main(int argc, char *argv[]) {
     int sock = 0, valread;
     struct sockaddr_in serv_addr;
 
+    // menu list
     std::cout << "Welcome to disk client, type in the following command to manage a virtual disk space!\n";
     std::cout << "[F]ormat a new file system\n";
     std::cout << "[RESET] to delete a current file system\n";
@@ -28,6 +29,7 @@ int main(int argc, char *argv[]) {
     std::cout << "When you see 0 before the data, it means processed successfully; if 1, it means processed failed; if 2, fail due to special issues\n";
     std::cout << "------------------------------------------------------------\n";
 
+    // as long as the user do not want to quit the client, the client will generate a new socket for every request
     while(true) {
 
         if ((sock = socket(AF_INET, SOCK_STREAM, 0))< 0) {
