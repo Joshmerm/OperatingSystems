@@ -13,32 +13,36 @@
 
 #define PORT 8080
 
+//file system sturcture
 struct FileSystem
 {
-    int fileID[2];
-    std::string fileName;
-    int parentID[2];
-    std::string content;
+    int fileID[2]; // file id contains 2 parts, the level of the file and the current position of the file
+    std::string fileName; // name of the file
+    int parentID[2]; // parent's file id
+    std::string content; // if a file is a txt file, it will have content
     int isTxt;
 };
 
+//socket management, this will pass the socket and the related command to the thread function
 struct sockPass
 {
     int socket;
-    int flag;
-    std::string file;
-    std::string input;
+    int flag; // for function [L]isting
+    std::string file; // file name
+    std::string input; // write file purpose
 };
 
-std::ifstream in_fs;
-FileSystem *current;
-FileSystem *rootFile;
-std::vector<FileSystem *> pwd;
-std::vector<std::vector<FileSystem *>> file_level;
-std::string message;
-int dataStored = 0;
+
+std::ifstream in_fs; // represent the file system file/ to represent if the file system exist or not
+FileSystem *current; // current directory
+FileSystem *rootFile; // root directory
+std::vector<FileSystem *> pwd; //store the current file directory path
+std::vector<std::vector<FileSystem *>> file_level; // the overall file system storage management vector, to store the files level by level
+std::string message; // a message string that use to send the message to the client
+int dataStored = 0; // to check if the file system has been imported to the server program or not
 
 // fileID[0] = file level number; [1] = file number at current level
+// three different new file function, 1 for root, 1 for directory, 1 for txt file
 FileSystem *newFile(std::string fname, int id[2])
 {
     FileSystem *fs = new FileSystem;
@@ -75,10 +79,13 @@ FileSystem *newFile(std::string fname, int id[2], int parentid[2], std::string c
     return fs;
 }
 
+// update the file system file when ever the server program has an update for [file_level]
 void update_file_system()
 {
+    //open a the current file system file and overwrite it
     std::ofstream update("filesystem.txt");
 
+    //replace all the old data with the new data
     for (int j = 0; j < file_level.size(); j++)
     {
         if (j == 0)
@@ -91,9 +98,11 @@ void update_file_system()
             {
                 std::string construct;
                 FileSystem *currentFile = file_level[j][k];
+                // special construction in the file system file to store and read the datas
                 construct = std::to_string(currentFile->parentID[0]) + '&' +
                             std::to_string(currentFile->parentID[1]) + '|' +
                             (currentFile->fileName);
+                // if the current file is a txt file, include its content
                 if ((currentFile->isTxt) == 1)
                 {
                     construct += '~' + (currentFile->content);
@@ -112,6 +121,7 @@ void update_file_system()
     }
 }
 
+// remove all related file to a directory one level by one level
 void remove_related_file(FileSystem* fs, int level) {
     if (level == (file_level.size() - 1)) {
         //base case
@@ -128,21 +138,30 @@ void remove_related_file(FileSystem* fs, int level) {
             }
         }
         int count = file_level[nextLevel].size();
+        //extract the current file number, use it to shift all the remaining file's parent id later
+        int fileNum = fs->fileID[1];
+
         for (int i = 0; i < count; i ++) {
             //if it matches the parent id then delete
             if ( (file_level[nextLevel][i]->parentID[0] == fs->fileID[0]) &&
                 (file_level[nextLevel][i]->parentID[1] == fs->fileID[1]) ) {
+                    //shift the next file number left 1 then remove the current file
+                    for (int j = i + 1; j < file_level[nextLevel].size(); j++) {
+                            int current_id = (file_level[nextLevel][j]->fileID[1] - 1);
+                            file_level[nextLevel][j]->fileID[1] = current_id;
+                    }
 
                     file_level[nextLevel].erase(file_level[nextLevel].begin() + i);
                     i --;
                     count = file_level[nextLevel].size();
+
             }
-            // else, set the rest of the file's id and parent id 1 position before
-            // the level id will remain the same
-            else {
-                int current_id = (file_level[nextLevel][i]->fileID[1] - 1);
+        }
+        // for all the remaining file, if their parent's file number is > the current file's file number, shift
+        // their parent's file number one to the left
+        for (int i = 0; i < file_level[nextLevel].size(); i ++) {
+            if ((file_level[nextLevel][i]->parentID[1] > 0) && (file_level[nextLevel][i]->parentID[1] > fileNum)) {
                 int current_parentID2 = (file_level[nextLevel][i]->parentID[1] - 1);
-                file_level[nextLevel][i]->fileID[1] = current_id;
                 file_level[nextLevel][i]->parentID[1] = current_parentID2;
             }
         }
@@ -155,6 +174,7 @@ void remove_related_file(FileSystem* fs, int level) {
     }
 }
 
+// delete the current file system if there is one
 void *delete_file_system(void *request){
     int sock = ((struct sockPass*) request)->socket;
 
@@ -179,6 +199,7 @@ void *delete_file_system(void *request){
     pthread_exit(0);
 }
 
+// read the file system to initialize the server data
 void *read_file_system(void *request)
 {
     std::string reader;
@@ -198,11 +219,13 @@ void *read_file_system(void *request)
             file_level.push_back(fsv);
             count++;
         }
+        // after push the root file, push one level at a time then do specification later
         else
-        {
+        {  
             fileLocation.push_back(reader);
         }
     }
+    // for all the level inside file location, put the level into multiple files
     for (int i = 0; i < fileLocation.size(); i++)
     {
 
@@ -215,10 +238,11 @@ void *read_file_system(void *request)
             content.push_back(temp);
         }
 
+        // create a current level list to push all the file in the current level after everything is done
         std::vector<FileSystem *> currentLevel;
         for (int j = 0; j < content.size(); j++)
         {
-
+            // for every file in this level, read the file by decode their structure
             std::string sub_level = content[j];
             std::stringstream s2(sub_level);
             std::vector<std::string> content2;
@@ -277,6 +301,7 @@ void *read_file_system(void *request)
     pthread_exit(0);
 }
 
+// create a file system if no file system exist
 void *create_file_system(void *request)
 {
     int sock = ((struct sockPass *)request)->socket;
@@ -298,6 +323,7 @@ void *create_file_system(void *request)
     pthread_exit(0);
 }
 
+// listing all the file under the current file
 void *listing(void *request)
 {
     int sock = ((struct sockPass *)request)->socket;
@@ -326,6 +352,9 @@ void *listing(void *request)
                         message += '&' + std::to_string(file_level[nextLevel][i]->parentID[1]) + '|';
                     }
                     message += file_level[nextLevel][i]->fileName;
+                    if (flag == 1) {
+                        message += " " + std::to_string(file_level[nextLevel][i]->fileID[0]) + " " + std::to_string(file_level[nextLevel][i]->fileID[1]);
+                    }
                     if (i != (nextLevelSize - 1))
                     {
                         message += "\n";
@@ -350,6 +379,7 @@ void *listing(void *request)
     pthread_exit(0);
 }
 
+// read a .txt file
 void *read_file(void *request)
 {
 
@@ -410,6 +440,7 @@ void *read_file(void *request)
     pthread_exit(0);
 }
 
+// write to a .txt file
 void *write_file(void *request)
 {
     struct sockPass *input = (struct sockPass *)request;
@@ -424,7 +455,6 @@ void *write_file(void *request)
         pthread_exit(0);
     }
     int nextLevel = (current->fileID[0]) + 1;
-
     if (nextLevel < file_level.size())
     {
 
@@ -438,7 +468,6 @@ void *write_file(void *request)
             message = "1";
             std::vector<FileSystem *> child = file_level[nextLevel];
             std::vector<FileSystem *> child_of_current_directory;
-
             for (int i = 0; i < child.size(); i++)
             {
                 if ((child[i]->parentID[0] == current->fileID[0]) &&
@@ -484,6 +513,7 @@ void *write_file(void *request)
     pthread_exit(0);
 }
 
+// create a file with .txt extension
 void *create_file(void *request)
 {
     struct sockPass *input = (struct sockPass *)request;
@@ -572,6 +602,7 @@ void *create_file(void *request)
     pthread_exit(0);
 }
 
+// remove a current exist .txt extension file
 void *delete_file(void *request) {
     struct sockPass *input = (struct sockPass *)request;
     int sock = input->socket;
@@ -625,14 +656,21 @@ void *delete_file(void *request) {
             if ((file_level[nextLevel][i]->fileName).compare(filename) == 0)
             {
                 if ( (file_level[nextLevel][i]->parentID[0] == current->fileID[0]) &&
-                    (file_level[nextLevel][i]->parentID[1] == current->fileID[1]) )
-                {
-                file_level[nextLevel].erase(file_level[nextLevel].begin() + i);
-                update_file_system();
-                message = "0";
-                std::cout << "file deleted\n";
-                send(sock, message.c_str(), message.length(), 0);
-                pthread_exit(0);
+                    (file_level[nextLevel][i]->parentID[1] == current->fileID[1]) ){
+                    // shift all id to left 1
+                    for (int j = i + 1; j < file_level[nextLevel].size(); j ++) {
+                        // if the current file position/number is > 0
+                            int current_id = (file_level[nextLevel][j]->fileID[1]);
+                            if (current_id > 0) {
+                                file_level[nextLevel][j]->fileID[1] = current_id - 1; 
+                            }
+                    }
+                    file_level[nextLevel].erase(file_level[nextLevel].begin() + i);
+                    update_file_system();
+                    message = "0";
+                    std::cout << "file deleted\n";
+                    send(sock, message.c_str(), message.length(), 0);
+                    pthread_exit(0);
                 }
             }
         }
@@ -838,6 +876,7 @@ void *print_working_directory(void* request) {
     }
 
     std::string output;
+    // print everything in the pwd list
     for (int i = 0; i < pwd.size(); i ++) {
         std::string temp = (pwd[i]->fileName);
         output += temp;
@@ -903,17 +942,26 @@ void *remove_directory(void *request) {
         int pa_id[2] = {(current->fileID[0]), (current->fileID[1])};
         for (int i = 0; i < file_level[nextLevel].size(); i++)
         {
+            // after remove the file, the file id will be shift one to the left
             if ((file_level[nextLevel][i]->fileName).compare(filename) == 0)
             {
                 if ( (file_level[nextLevel][i]->parentID[0] == current->fileID[0]) &&
                     (file_level[nextLevel][i]->parentID[1] == current->fileID[1]) )
                 {
                     remove_related_file(file_level[nextLevel][i], nextLevel);
-                    file_level[nextLevel].erase(file_level[nextLevel].begin() + i);
-                    for (int i = 0; i < file_level[nextLevel].size(); i ++) {
-                        int current_id = (file_level[nextLevel][i]->fileID[1] - 1);
-                        file_level[nextLevel][i]->fileID[1] = current_id; 
+                     // shift all the existing file number after it 1 if their file number is > 0
+                     // starting from the current file who is ready to deleted, shift before delete
+                    for (int j = i + 1; j < file_level[nextLevel].size(); j ++) {
+                        // if the current file position/number is > 0
+                            int current_id = (file_level[nextLevel][j]->fileID[1]);
+                            if (current_id > 0) {
+                                file_level[nextLevel][j]->fileID[1] = current_id - 1; 
+                            }
                     }
+                    file_level[nextLevel].erase(file_level[nextLevel].begin() + i);
+
+
+
                     update_file_system();
                     message = "0";
                     std::cout << "directory deleted\n";
@@ -1012,10 +1060,12 @@ int main(int argc, char *argv[])
 
         struct sockPass *arg = new sockPass;
 
+        // push the command into a list
         while (getline(ex, temp, ' '))
         {
             command_list.push_back(temp);
         }
+        // after getting the command, compare the command with all the avaliable command
         if (command_list[0].compare("exit") == 0)
         {
             std::cout << "Client exited\n------------------------\n";
