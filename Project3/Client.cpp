@@ -32,7 +32,7 @@ int main(int argc, char const *argv[])
         // close(sock);
         string input = "";
         char buffer[1024] = {0};
-        cout << "Please enter a string ";
+        cout << "Please enter a string: ";
         getline(cin, input);
         if(input == "exit" || input == "Exit") exit(EXIT_SUCCESS);
         strcpy(buffer, input.c_str());
