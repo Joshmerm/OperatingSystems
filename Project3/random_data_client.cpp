@@ -8,6 +8,7 @@ using namespace std;
 
 #define portNum 9000
 
+//A method used to check a string is number or not
 bool isNumber(string s){
 	for (int i = 0;i < s.length();i++){
 		if (isdigit(s[i]) == false){
@@ -21,14 +22,10 @@ int main(int argc, char ** argv)
     int client = 0, valread;
 
     struct sockaddr_in serv_addr;
-	cout << "C : Enter C c s will create a virtual disk file(Size of c * s)" << endl;
-	cout << "D : Delte the virtual disk" << endl;
-	cout << "I: Enter I, display the overall size of the cylinder and vector" << endl;
-    cout << "R: Enter R c s will show you the content of this specific position" << endl;
-    cout << "W: Enter W c s l will writing data into that specific position " << endl;
-	cout << "exit : Quit the system" << endl;
-	cout << "(c : cylinder's position, s: vector's position)" << endl;
-	cout << "(l:the number of bytes it provide, it's size shouldn't large than 128 bytes)" << endl;
+
+	cout << "I: display the overall size of the cylinder and vector" << endl;
+    cout << "N: Enter any number and it will generate equal amount of read/write request" << endl;
+    cout << "exit : Quit the system" << endl;
     cout << endl;
 
 	while (true){
@@ -59,36 +56,31 @@ int main(int argc, char ** argv)
 			General idea: Getline to catch user's input and used if-else statement to check
 			if the user input is correct or not. 
 			isNumber : A method use to check user's input is digit/number or not
-			Most likely, it accept command of create, delete, information of disk,exit
-			read and write specfic location of the disk.
-
+			Command Accept : I for information, N for any number, to generate equal amount of random read/write request
+			exit, for shut down the system.
 		*/
-
     	string input;
 		char buffer[1024] = {0};
 		cout << "Command: ";
     	getline(cin,input);
 
-		if (!(isNumber(input))){
+		if ((isNumber(input)) || ((input.compare("I") == 0) || (input.compare("exit") == 0))){
 			strcpy(buffer,input.c_str());
 			send(client ,buffer , strlen(buffer) , 0 );
 			if (input.compare("exit") == 0){
 				break;
 			}
-			valread = read( client , buffer, 1024);
 
-			
 		}
 		else{
 			string wrong = "error";
 			send(client ,wrong.c_str(),wrong.length() , 0 );
-			valread = read( client , buffer, 1024);
+			
 		}
-		
+		valread = read( client , buffer, 1024);
 		cout << buffer << endl;
 		
 	}
     
 	return 0;
 }
-
