@@ -1,310 +1,413 @@
-#include <iostream>
+#include <unistd.h>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <string.h>
-#include <unistd.h>
-#include <pthread.h>
+#include <iostream>
 #include <fstream>
+#include <cstring>
 #include <vector>
-#include <string.h>
+#include <sys/wait.h>
 #include <sstream>
+#include <time.h>
 
-#define PORT 8080
+using namespace std;
 
-std::ifstream in_disk;
-int track_sector[2];
+#define portNum 9000
 
-std::vector<std::string> datas;
+ifstream p_in;
+ifstream d_in;
 
-std::string warnning;
+vector <string> xy;
 
-// read formula
-// ( (track - 1) * sector ) + (sector_read)
+vector <string> data;
+
+string warning;
 
 struct info{
     int socket;
-    int track_num;
+    int cyr_num;
     int sector_num;
+	int N;
     char* input;
 };
 
-void* get_disk(void* request) {
-        std::string temp;
-        while(getline(in_disk, temp)) {
-            datas.push_back(temp);
-        }
-        std::stringstream s(datas[0]);
-        short count = 0;
-        while (getline(s, temp, ' ')) {
-            track_sector[count] = std::stoi(temp);
-            count ++;
-        }
-
-        pthread_exit(0);
+bool isNumber(string s){
+	for (int i = 0;i < s.length();i++){
+		if (isdigit(s[i]) == false){
+			return false;
+		}
+	}
+	return true;
 }
 
-void* information_request(void* request) {
-    int sock = ((struct info*) request)->socket;
+void* get_disk(void* arg){
+    //Storing cylinder's number and sector's number into vector xy
+    string temp;
+    getline(p_in,temp);
+    string tokenp;
+    stringstream p(temp);
+    while(getline(p,tokenp,' ')){
+        xy.push_back(tokenp);
+    }
 
-    if (in_disk.is_open()) {
-        warnning = std::to_string(track_sector[0]) + " " + std::to_string(track_sector[1]);
-        send(sock, warnning.c_str(), warnning.length(), 0);
+	//Storing the content of the disk into vector data
+    string temp2;
+    while(getline(d_in,temp2)){
+        data.push_back(temp2);
     }
-    else {
-        warnning = "Error, disk not exist, cannot retrieve disk information.";
-        std::cout << "Disk does not exist\n";
-        send(sock, warnning.c_str(), warnning.length(), 0);
-    }
+
+    pthread_exit(0);
+}
+
+void * create_disk(void* arg){
+	//If statement : To determine the file exist or not ? If true, then file already exist message send
+	//Else statement : To create two file, one for the size of the disk and another one for the content of the disk
+	
+    struct info* request = (struct info*)arg;
+    int sock = request->socket;
+
+    if (p_in.is_open()){
+			warning = "Error, disk already exist";
+				send(sock,warning.c_str(),warning.length(),0);
+	}
+	else{
+				
+		int cylinders = request->cyr_num;
+		int sectors = request->sector_num;
+		ofstream p_out("property.txt");
+		ofstream d_out("disk.txt");
+		string temp = "" + to_string(cylinders) + " " + to_string(sectors);
+		p_out << temp;
+		p_out.close();
+		
+        int size = cylinders * sectors;
+			for (int i = 0;i < size;i++){
+				d_out << endl;
+			}			
+			d_out.close();
+			warning = "Disk created it successfully";
+			send(sock,warning.c_str(),warning.length(),0);
+		}
     
     pthread_exit(0);
 }
 
-void* create_disk(void* request) {
-    struct info* input = (struct info*) request;
-    int sock = input->socket;
+void* delete_disk(void* arg){
+	//If statement : To check the file exist or not?
+	//If it exist; it going used remove method to remove both txt file
+	//Property : Size of the file
+	//Disk : Content of the file
+    int sock = ((struct info*)arg) -> socket;
 
+    if (p_in.is_open()){
+		p_in.close();
+		d_in.close();
+		remove("property.txt");
+		remove("disk.txt");
+		warning = "Disk delete it successfully";
+	}
+	else{
+		warning = "file doesn't exist";
+	}
+	send(sock,warning.c_str(),warning.length(),0);
 
-    if (in_disk.is_open()) {
-        warnning = "Error, disk already existed";
-        std::cout << "There is already a disk\n";
-        send(sock, warnning.c_str(), warnning.length(), 0);
-    }
-    else {
-        int tracks = input->track_num;
-        int sectors = input->sector_num;
-        std::ofstream newDisk("disk.txt");
-        newDisk << std::to_string(tracks) + " " + std::to_string(sectors) + "\n";
-        for (int i = 0; i < (tracks * sectors); i ++) {
-            newDisk << "\n";
-        }
-        warnning = "Success, disk created";
-        std::cout << "Disk Created\n";
-        send(sock, warnning.c_str(), warnning.length(), 0);
-        newDisk.close();
-    }
+    pthread_exit(0);
+}
 
+void* infomation_disk(void* arg){
+	//If statement : To check the file exist or not?
+	//For loop: To retrieve the values the disk store in property.txt
+    int sock = ((struct info*)arg) -> socket;
+    
+    string txtSize;
+		if (p_in.is_open()){
+				for (int i = 0;i < xy.size();i++){
+                    txtSize += xy[i] + " ";
+                }
+				warning = txtSize;
+		}
+		else{
+			warning = "file doesn't exist";
+		}
+		send(sock,warning.c_str(),warning.length(),0);
+
+    pthread_exit(0);
+}
+
+void* read_disk(void* arg){
+	//If statement: to check the file exist or not and the track and sector value is small or equal to the disk's track and vector number
+	//TRue, find the location, and retrieve the lines from the data
+	//Then, send it back to the client
+    struct info * request = (struct info*) arg;
+    int sock = request->socket;
+    int track = request->cyr_num;
+    int sector = request->sector_num;
+    
+    int x = stoi(xy[0]);
+    int y = stoi(xy[1]);
+    int position = (track * y) - (y - sector);
+    string temp;
+	if (p_in.is_open() && track <= x && sector <= y){
+		string ssize = data[position - 1];
+		if (ssize.length() > 0){
+			temp = "1 " + ssize;
+		}
+		else{
+			temp = "0" + ssize;;
+		}
+	}
+	else{
+		temp = "Error, incorrect input";
+	}
+    
+    send(sock,temp.c_str(),temp.length(),0);
     
     pthread_exit(0);
-}
-
-void* delete_disk(void* request) {
-    int sock = ((struct info*) request)->socket;
-
-    if (in_disk.is_open()) {
-        in_disk.close();
-        remove("disk.txt");
-        warnning = "Remove sucessfully";
-        std::cout << "Disk removed\n";
-        send(sock, warnning.c_str(), warnning.length(), 0);
-    }
-    else {
-        warnning = "No disk to remove";
-        std::cout << "Fail to remove because there is no disk\n";
-        send(sock, warnning.c_str(), warnning.length(), 0);
-    }
-
-    pthread_exit(0);
-}
-
-void* read_disk(void* request) {
-    struct info* input = (struct info*) request;
-    int sock = input->socket;
-    int tracks = input->track_num;
-    int sectors = input->sector_num;
-
-    if (in_disk.is_open() && tracks <= track_sector[0] && sectors <= track_sector[1] && 
-        !(tracks <= 0) && !(sectors <= 0)) {
-        int position = ((tracks - 1) * track_sector[1]) + (sectors);
-        warnning = "1" + datas[position];
-        std::cout << "Return value to client\n";
-        send(sock, warnning.c_str(), warnning.length(), 0);
-
-    }
-    else {
-        warnning = "0";
-        std::cout << "Fail to provide information back to the client (probably no disk or invalid input)\n";
-        send(sock, warnning.c_str(), warnning.length(), 0);
-    }
-
     
-    pthread_exit(0);
 }
 
+void* write_disk(void* arg){
+	//If statement: to check the file exist or not and the track and sector value is small or equal to the disk's track and vector number
+	//Checking the size of the sentence, it must less than 129 bytes.
+	//Assign the text into specfic location
+	//Then, rewrite the whole files
 
-void* write_disk(void* request) {
-    struct info* input = (struct info*) request;
-    int sock = input->socket;
-    int tracks = input->track_num;
-    int sectors = input->sector_num;
-    std::string words = input->input;
-
-    int input_length = words.length();
-
-    if (in_disk.is_open() && tracks <= track_sector[0] && sectors <= track_sector[1] && 
-        input_length <= 128 && !(tracks <= 0) && !(sectors <= 0)) {
-        int position = ((tracks - 1) * track_sector[1]) + (sectors);
-        datas[position] = words;
-        std::ofstream newDisk("disk.txt");
-        newDisk << std::to_string(track_sector[0]) + " " + std::to_string(track_sector[1]) + "\n";
-        for (int i = 0; i < (track_sector[0] * track_sector[1]); i ++) {
-            newDisk << datas[i+1] << "\n";
-        }
-        newDisk.close();
-        warnning = "1";
-        std::cout << "Write sucesscefully\n";
-        send(sock, warnning.c_str(), warnning.length(), 0);
-
-    }
-    else {
-        warnning = "0";
-        std::cout << "Fail to write the data (probably no disk or invalid input)\n";
-        send(sock, warnning.c_str(), warnning.length(), 0);
-    }    
-
-    pthread_exit(0);
+	struct info * request = (struct info*) arg;
+    int sock = request->socket;
+    int track = request->cyr_num;
+    int sector = request->sector_num;
+	string sentence = request->input;
+	
+	int size = sentence.length();
+	int x = stoi(xy[0]);
+	int y = stoi(xy[1]);
+	
+	
+	if (p_in.is_open() && track <= x && sector <= y && size <= 128){
+		    int position = (track * y) - (y - sector);
+			data[position - 1] = sentence;
+			ofstream newdisk("disk.txt");
+			for (int i = 0;i < data.size();i++){
+				newdisk << data[i] << endl;
+			}
+			newdisk.close();
+			warning = "1";
+	}
+	else{
+		warning = "0";
+	}
+	
+	send(sock,warning.c_str(),warning.length(),0);
+		
+	pthread_exit(0);
 }
+void* random_request(void * arg){
 
-int main(int argc, char *argv[]) {
+	//Random function to have a random read/write action, random cyliner's and vector's numbers
+	srand(time(NULL));
+	struct info * request = (struct info*) arg;
+	int sock = request->socket;
+	int ntimes = request->N;
 
+	//Retrieve x y ,which the size of disk
+	int x = stoi(xy[0]);
+	int y = stoi(xy[1]);
+	
+	string seed = "Seed: ";
+	for (int i = 0;i < ntimes;i++){
+		int trackR = (rand() % x) + 1;
+		int sectorS = (rand() % y) + 1;
+		
+		string sentence = "";
+		int temp = (rand() % 2);
+		int position = (trackR * y) - (y - sectorS);
+		cout << temp << " " << position << endl;
+		if (temp == 0){
+			string size = data[position - 1];
+		}
+		else{
+			for (int i = 0;i < 128;i++){
+				char rch = 'a' + rand() % 26;
+				sentence += rch;
+			}
+			data[position - 1] = sentence; 
+			ofstream newdisk("disk.txt");
+			for (int i = 0;i < data.size();i++){
+				newdisk << data[i] << endl;
+			}
+			newdisk.close();
+		}
+
+		seed += to_string(temp) + " ";	
+	}
+	send(sock,seed.c_str(),seed.length(),0);
+
+	pthread_exit(0);
+}
+int main(int argc,char ** argv)
+{
     int server_fd, new_socket, valread;
+	bool check = true;
+	
+	struct sockaddr_in address;
+	int opt = 1;
+	int addrlen = sizeof(address);
+	
+	
+	// Creating socket file descriptor
+	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
+	{
+		perror("socket failed");
+		exit(EXIT_FAILURE);
+	}
+	
+	// Forcefully attaching socket to the port 8080
+	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,
+												&opt, sizeof(opt)))
+	{
+		perror("setsockopt");
+		exit(EXIT_FAILURE);
+	}
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = INADDR_ANY;
+	address.sin_port = htons(portNum);
+	
+	// Forcefully attaching socket to the port 8080
+	if (bind(server_fd, (struct sockaddr *)&address,sizeof(address))<0)
+	{
+		perror("bind failed");
+		exit(EXIT_FAILURE);
+	}
+	if (listen(server_fd, 3) < 0)
+	{
+		perror("listen");
+		exit(EXIT_FAILURE);
+	}
 
-    struct sockaddr_in address;
+    cout << "Server waiting... " << endl;
 
-    int opt = 1;
-    int addrlen = sizeof(address);
+	while (check)
+	{
+		if ((new_socket = accept(server_fd, (struct sockaddr *)&address,
+					(socklen_t*)&addrlen))<0)
+		{
+			perror("accept");
+			exit(EXIT_FAILURE);
+		}
 
-    
+		cout << "Client connected" << endl;
 
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        perror("socket failed");
-        exit(EXIT_FAILURE);
-    }
+        p_in.open("property.txt");
+        d_in.open("disk.txt");
 
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
-        perror("setsockopt");
-        exit(EXIT_FAILURE);
-    }
+        pthread_t th;
 
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(PORT);
-
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        perror("bind failed");
-        exit(EXIT_FAILURE);
-    }
-    
-    std::cout << "Server connected to port " << PORT << "\n";
-    
-    if (listen(server_fd, 3) < 0) {
-        perror("listen");
-        exit(EXIT_FAILURE);
-    }
-
-
-
-    while(true) {
-
-        if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *) &addrlen))< 0) {
-            perror("accept");
-            exit(EXIT_FAILURE);
+        if (p_in.is_open() && d_in.is_open()){
+            pthread_create(&th,NULL,&get_disk,NULL);
+            pthread_join(th,NULL);
         }
 
-        std::cout << "Client Connected\n";
-        // open the disk
-        in_disk.open("disk.txt");
-
-        pthread_t pt;
-        // if the disk is existed, read the number of tracks and sectors and datas
-        if (in_disk.is_open()) {
-            pthread_create(&pt, NULL, &get_disk, NULL);
-
-            pthread_join(pt, NULL);
-        }
-
-        char buffer[1024] = {0};
-
-        read(new_socket, buffer, 1024);
-
-        std::cout << "Received \"" << buffer << "\" from client\n";
-
-        std::vector<std::string> command_list;
-        std::string conv = buffer;
-        std::stringstream ex(conv);
-        std::string temp;
-
-        while (getline(ex, temp, ' ')) {
-            command_list.push_back(temp);
-        }
-
+		char buffer[1024] = {0};
+        
+		string warning;
+		read(new_socket,buffer,1024);
+		vector <string> spliter;
+    	string curr =buffer;
+		stringstream p(curr);
+		string t;
+		while (getline(p,t,' ')){
+			spliter.push_back(t);
+		}
+		
         struct info* arg = (struct info*)malloc(sizeof(struct info));
 
-        if (command_list[0].compare("I") == 0) {
+		if (spliter[0].compare("C") == 0){
+			if (spliter.size() < 4){
+				arg->socket = new_socket;
+				arg->cyr_num = stoi(spliter[1]);
+				arg->sector_num = stoi(spliter[2]);
+				pthread_create(&th,NULL,&create_disk,(void *)arg);
+				pthread_join(th,NULL);
+			}
+			else{
+				warning = "Incorrect format, please try it again";
+				send(new_socket,warning.c_str(),warning.length(),0);
+			}	
+		}
+		else if (spliter[0].compare("D") == 0){
+			if (spliter.size() < 2){
+				arg->socket = new_socket;
+				pthread_create(&th,NULL,&delete_disk,(void*)arg);
+				pthread_join(th,NULL);
+			}
+			else{
+				warning = "Incorrect format, please try it again";
+				send(new_socket,warning.c_str(),warning.length(),0);
+			}
+		}
+		else if (spliter[0].compare("I") == 0){
+			if (spliter.size() < 2){
+				arg->socket = new_socket;
+				pthread_create(&th,NULL,&infomation_disk,(void*)arg);
+				pthread_join(th,NULL);
+			}
+			else{
+				warning = "Incorrect format, please try it again";
+				send(new_socket,warning.c_str(),warning.length(),0);
+			}		
+		}
+		else if (spliter[0].compare("R") == 0){
+            if (spliter.size() < 4){
+				arg->socket = new_socket;
+            	arg->cyr_num = stoi(spliter[1]);
+            	arg->sector_num = stoi(spliter[2]);
+            	pthread_create(&th,NULL,&read_disk,(void*)arg);
+            	pthread_join(th,NULL);
+			}
+			else{
+				warning = "Incorrect format, please try it again";
+				send(new_socket,warning.c_str(),warning.length(),0);
+			}
+			
+		}
+		else if (spliter[0].compare("W") == 0){
             arg->socket = new_socket;
-            pthread_create(&pt,NULL, &information_request, (void *) arg);
-            pthread_join(pt, NULL);
-
-        }
-        else if (command_list[0].compare("C") == 0) {
-            arg->socket = new_socket;
-            arg->track_num = std::stoi(command_list[1]);
-            arg->sector_num = std::stoi(command_list[2]);
-            pthread_create(&pt,NULL, &create_disk, (void *) arg);
-
-            pthread_join(pt, NULL);
-        }
-        else if (command_list[0].compare("D") == 0) {
-            arg->socket = new_socket;
-            pthread_create(&pt, NULL, &delete_disk, (void *) arg);
-
-            pthread_join(pt, NULL);
-        }
-        else if (command_list[0].compare("R") == 0) {
-            arg->socket = new_socket;
-            arg->track_num = std::stoi(command_list[1]);
-            arg->sector_num = std::stoi(command_list[2]);
-            pthread_create(&pt,NULL, &read_disk, (void *) arg);
-
-            pthread_join(pt, NULL);
-        }
-        else if (command_list[0].compare("W") == 0) {
-            arg->socket = new_socket;
-            arg->track_num = std::stoi(command_list[1]);
-            arg->sector_num = std::stoi(command_list[2]);
-            std::string completeInput = "";
-            for (int i = 3; i < command_list.size(); i ++) {
-                completeInput += command_list[i];
-                if (i != (command_list.size() - 1)) {
-                    completeInput += " ";
-                }
+            arg->cyr_num = stoi(spliter[1]);
+            arg->sector_num = stoi(spliter[2]);
+			//In case if there's a space between the words
+            string completeInput = "";
+            for (int i =3;i < spliter.size();i++){
+                completeInput += spliter[i] + " ";				
             }
 
-            arg->input = (char *) completeInput.c_str();
-            pthread_create(&pt,NULL, &write_disk, (void *) arg);
+            //Convert completeinput into constnat string
+            arg->input = (char *)completeInput.c_str();
 
-            pthread_join(pt, NULL);
-        }
-        else if (command_list[0].compare("exit") == 0) {
-            std::cout<< "The client has exited\n";
-        }
-        else {
-            warnning = "Unknown command, please try again (input case is sensitive)";
-            std::cout << "Unknown command received from the client, no information return\n";
-            send(new_socket, warnning.c_str(), warnning.length(), 0);
-        }
+            pthread_create(&th,NULL,&write_disk,(void*)arg);
+            pthread_join(th,NULL);
 
-        if (in_disk.is_open()) {
-            in_disk.close();
-        }
+		}
+		else if (isNumber(spliter[0])){
+			arg->socket = new_socket;
+			arg->N = stoi(spliter[0]);
+			pthread_create(&th,NULL,&random_request,(void*)arg);
+            pthread_join(th,NULL);
 
-        datas.clear();
-
-    }
-
-
+		}
+		else if (spliter[0].compare("exit") == 0){
+			cout << "Connection terminated, thank you" << endl;
+			check = false;
+		}
+		else{
+			warning = "Unknown command, please try again\n";
+			cout << "Undefine command, unable to access the command " << endl;
+			send(new_socket,warning.c_str(),warning.length(),0);
+		}
+		warning.clear();
+		spliter.clear();
+		xy.clear();
+	}
     return 0;
-
-
 }
